@@ -8,7 +8,7 @@ This bundle provides scripts, configuration files, and apps for creating a Geode
 ## Table of Contents
 
 - [Installing Bundle](#installing-bundle)
-- [Use Case]($use-case)
+- [Use Case](#use-case)
 - [Required Software](#required-software)
 - [Bundle Contents](#bundle-contents)
 - [Installation Steps](#installation-steps)
@@ -40,9 +40,9 @@ This bundle provides scripts, configuration files, and apps for creating a Geode
     - [Type 5 - Merger](#type-5---merger)
     - [Type 5 Summary](#type-5-summary)
 - [Test Results](#test-results)
-- [Diagnosis](#diagnosis)
-- [Prognosis](#prognosis)
-- [Cluster Recovery Guidelines](#cluster-recovery-guidelines)
+- [GemFire Network Partition Diagnosis](#gemfire-network-partition-diagnosis)
+- [GemFire Network Partition Prognosis](#gemfire-network-partition-prognosis)
+- [GemFire Cluster Recovery Guidelines](#gemfire-cluster-recovery-guidelines)
 - [Teardown](#Teardown)
   - [Stop Cluster](#stop-cluster)
   - [Stop Pod](#stop-pod)
@@ -57,7 +57,15 @@ install_bundle -download bundle-geode-1-app-perf_test_sb-cluster-sb
 
 ## Use Case
 
-To prepare for encountering cluster split-brain situations, this use case provides step-by-step instructions for creating and diagnosing five (5) types of network parition.
+To prepare for encountering cluster split-brain situations, this use case provides step-by-step instructions for creating and diagnosing five (5) types of network parition covering all possibilities.
+
+- [Type 1: Data nodes isolated, locators unreachable.](#type-1)
+- [Type 2: Locators divided.](#type-2)
+- [Type 3: Quorum without locators.](#type-3)
+- [Type 4: Locators isolated, data nodes unreachable.](#type-4)
+- [Type 5: Data nodes isolated, locators reachable.](#type-5)
+
+The following diagram shows Network Partition Type 2.
 
 ![Split-Brain Type 2](images/split-brain-Type-2.drawio.png)
 
@@ -314,7 +322,7 @@ Before we split the network, we ingest data into eight (8) regions by running `t
 | replicate_persistent               | REPLICATE_PERSISTENT          |
 | replicate_persistent_overflow      | REPLICATE_PERSISTENT_OVERFLOW |
 
-We expect persistent regions to recover data and others to lose data upon network recovery.
+We expect persistent regions to recover data and non-persistent regions to lose data upon network recovery.
 
 All test cases must be conducted on `pnode.local`. Login to `pnode.local` and switch cluster as follows.
 
@@ -334,7 +342,7 @@ The `sb/bin_sh` folder contains the following network partitioning scripts. The 
 | merge_cluster | Merge the split clusters by resetting iptables                        |
 | split_cluster | Split the cluster sb into two (2)                                     |
 
-The `sb/bin_sh` folder also contains log scraping scripts as follows. These scripts will help us analyzing the state of the cluster. The `-?` top displays the command usage.
+The `sb/bin_sh` folder also contains log scraping scripts as follows. These scripts will help us analyzing the state of the cluster. The `-?` option displays the command usage.
 
 | Script                                 | Description                                                                  |
 | -------------------------------------- | ---------------------------------------------------------------------------- |
@@ -400,7 +408,7 @@ We can see from the above output, the `sb` cluster has been configured as follow
 | Locators | node-06.local, node-07.local                                             |
 | Members  | node-01.local, node-02.local,node-03.local, node-04.local, node-05.local |
 
-We are now ready to conduct test cases. In each test case, we restart the cluster in a clean state.
+We are now ready to conduct split-brain tests. The subsequent section presents a test case per network partition type. Each test case can be carried out independently. In each test case, we restart the cluster in a clean state.
 
 ---
 
@@ -408,7 +416,7 @@ We are now ready to conduct test cases. In each test case, we restart the cluste
 
 ### Type 1
 
-**Split A without locators and Split B with locators.** In this test case, we partition the network so that **node-01** and **node-02** cannot be reached by the locators as shown below.
+**Data nodes isloated, locators unreachable.** In this test case, we split the network with some data nodes unreachable by locators. i.e., Split A without locators and Split B with locators, as shown below.
 
 | Split | Weight   | VM Hosts                                               |
 | ----- | -------- | ------------------------------------------------------ |
@@ -991,7 +999,7 @@ Output:
 
 ### Type 2
 
-**Split A and B each with a locator.** In this test case, we split the network with a locator in each cluster as follows.
+**Locators divided.** In this test case, we split the network with locators unreachable by each other, i.e., Split A and B each with a locator, as shown below.
 
 | Split | Weight   | VM Hosts                                               |
 | ----- | -------- | ------------------------------------------------------ |
@@ -1353,6 +1361,8 @@ group: g1
 
 ### Type 3
 
+**Quorum without locators.** In this test case, we split the network with a quorm that does not include locators, i.e., Split A with locators and Split B with a qurome but without locators, as shown below.
+
 **Split B quorum without locators.**
 
 | Split | Weight   | VM Hosts                                               |
@@ -1590,7 +1600,7 @@ We have no way of restarting the cluster. It is stuck in a quorem check loop.
 
 ### Type 4
 
-**Split A with locators but without data nodes.** In this test case, we isolate both locators.
+**Locators isolated, data nodes unreachable.** In this test case, we isolate locators, i.e., Split A with locators but without data nodes, as shown below.
 
 | Split | Weight   | VM Hosts                                               |
 | ----- | -------- | ------------------------------------------------------ |
@@ -1937,7 +1947,7 @@ As expected, the output above shows that we are not able to restart any of the m
 
 ### Type 5
 
-**Split A and B with both locators.** 
+**Data nodes isolated, locators reachable.** In this test case, we split the network to isolate data nodes but the locators are reachable by all data nodes, i.e., both Split A and Split B with locators, as shown below.
 
 | Split | Weight   | VM Hosts                                               |
 | ----- | -------- | ------------------------------------------------------ |
@@ -2298,7 +2308,7 @@ In the mean time, Pulse continues to see all the members as if nothing happened.
 
 ---
 
-## Diagnosis
+## GemFire Network Partition Diagnosis
 
 Based on our findings, we can put together a flow chart showing the steps involved in determining the network partition type.
 
@@ -2306,7 +2316,7 @@ Based on our findings, we can put together a flow chart showing the steps involv
 
 ---
 
-## Prognosis
+## GemFire Network Partition Prognosis
 
 We can use the [Test Results](#test-results) to create a prognosis for each network partition type as follows.
 
@@ -2326,23 +2336,42 @@ We can use the [Test Results](#test-results) to create a prognosis for each netw
 
 ---
 
-## Cluster Recovery Guidelines
+## GemFire Cluster Recovery Guidelines
 
 Based on the test results, we can also provide guidelines for recovering from each network partition type.
 
 ### Type 1, Type 2
 
-Fix the network issues if any. Check each member to see their CPU usage and availalbe system resources. Gracefully stop members in Split A if they are not responding due to resource constraints. Increase system resources for those members as needed and restart them. Let GemFire auto-recover. Once the restarted members have successfully rejoined the cluster, check for data loss. Persistent data should be fully recovered. Reingest non-persistent data.
+1. Fix network issues if any.
+1. Check each member to see their CPU usage and available system resources.
+1. Gracefully stop members in Split A if they are not responding due to system resource limitations.
+1. Increase system resources for those members as needed and restart them.
+1. Let GemFire auto-recover.
+1. Once the restarted members have successfully rejoined the cluster, check for data loss. 
+1. GemFire is expected to fully recover persistent data.
+1. Reingest non-persistent data.
 
-Be aware that auto-restart can take a long time to complete depending on the data volume, disk speeds, and the number of failed members. For our simple cluster, it took nearly five (5) minutes. Expect a much longer time to complete for larger clusters.
+:exclamation: Be aware that auto-restart can take a long time to complete depending on the data volume, disk speeds, and the number of failed members. For our simple cluster, it took nearly five (5) minutes. Expect a much longer time to complete for larger clusters.
 
 ### Type 3, Type 4
 
-Fix the network issues if any. Check each member to see their CPU usage and availalbe system resources. Stop or kill all members including the locators. Restart the cluster in a clean state. Make sure to remove all datastores before restarting the cluster. Reingest data.
+1. Fix network issues if any.
+1. Check each member to see their CPU usage and available system resources.
+1. Stop or kill all members including the locators.
+1. Restart the cluster in a clean state.
+1. Make sure to remove all data stores before restarting the cluster.
+1. Reingest persistent and non-persistent data.
 
 ### Type 5
 
-Fix the network issues if any. Check each member to see their CPU usage and availalbe system resources. Gracefully stop members (not locators) in Split A if they are not responding due to resource constraints. Increase system resources for those members as needed and restart them. Let GemFire auto-recover. Once the restarted members have successfully rejoined the cluster, check for data loss. Check client applications.
+1. Fix network issues if any.
+1. Check each member to see their CPU usage and available system resources.
+1. Gracefully stop members (not locators) in Split A if they are not responding due to system resource limitations.
+1. Increase system resources for those members as needed and restart them.
+1. Let GemFire auto-recover.
+1. Once the restarted members have successfully rejoined the cluster, check for data loss.
+1. Data loss is not expected but be prepared to reingest data for the regions with inconsistency.
+1. Check client applications.
 
 ---
 

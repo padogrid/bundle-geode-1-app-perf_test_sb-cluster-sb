@@ -22,7 +22,7 @@ DESRIPTION
    Splits the cluster $CLUSTER into two (2) by applying iptables rules.
 
 OPTIONS
-   -type 1|2|3|4|5|6
+   -type 1|2|3|4|5
             Network split type as shown below.
 
             Type 1: Split A without locators
@@ -59,7 +59,7 @@ OPTIONS
    interface
              Network interface. Run 'ifconfig' or 'ip addr' to determine the network interface
              that your host name is mapped to. For example, on ubuntu/trusty64, it would be
-             'eth1' and on ubuntu/binic64, it would be 'enp0s8'.  Default: eth1
+             'eth1' and on ubuntu/bionic64, it would be 'enp0s8'.  Default: eth1
 
 SEE ALSO
    merge_cluster, list_rules
