@@ -73,12 +73,11 @@ The following diagram shows Network Partition Type 2.
 
 - [Vagrant](https://www.vagrantup.com/downloads) (1)
 - [VirtualBox](https://www.virtualbox.org/) (1)
-- [Geode](https://archive.apache.org/dist/geode/) (2)
+- [Geode](https://archive.apache.org/dist/geode/) or [GemFire](https://network.pivotal.io/products/pivotal-gemfire) (2)
 - [Linux JDK](https://www.oracle.com/java/technologies/javase-downloads.html) (2)
-- [PadoGrid 0.9.20+](https://github.com/padogrid/padogrid/releases)
 
-1. This bundle uses PadoGrid pods which depend on Vagrant and VirtualBox. If you have not installed them, then please download and install them now by following the links above. For details on PadoGrid pods, see [Understanding PadoGrid Pods](https://github.com/padogrid/padogrid/wiki/Understanding-Padogrid-Pods).
-2. We need Geode and JDK for Linux in the VirtualBox VMs. We will install them later.
+1. This bundle uses PadoGrid pods which require Vagrant and VirtualBox. If you have not installed them, then please download and install them now by following the links above. For details on PadoGrid pods, see [Understanding PadoGrid Pods](https://github.com/padogrid/padogrid/wiki/Understanding-Padogrid-Pods).
+2. We need Geode or GemFire and JDK for Linux in the VirtualBox VMs. We will install them later.
 
 ## Bundle Contents
 
@@ -113,7 +112,7 @@ Follow the instructions in the subsequent sections.
 
 We need the following products installed before wen can setup Vagrant VMs. Download their tarball distributions by following the links.
 
-- [Geode](https://archive.apache.org/dist/geode/)
+- [Geode](https://archive.apache.org/dist/geode/) or [GemFire](https://network.pivotal.io/products/pivotal-gemfire)
 - [Linux JDK](https://www.oracle.com/java/technologies/javase-downloads.html)
 
 Assuming you have installed PadoGrid in the default directory, untar the downloaded tarballs in the `~/Padogrid/products/linux` directory as shown in the example below. If you have installed PadoGrid in a different directory, then make the appriate changes.
@@ -121,15 +120,19 @@ Assuming you have installed PadoGrid in the default directory, untar the downloa
 ```bash
 mkdir ~/Padogrid/products/linux
 tar -C ~/Padogrid/products/linux -xzf  ~/Downloads/jdk-8u333-linux-x64.tar.gz
+# Geode
 tar -C ~/Padogrid/products/linux -xzf  ~/Downloads/apache-geode-1.14.4.tgz
+# GemFire
+tar -C ~/Padogrid/products/linux -xzf  ~/Downloads/pivotal-gemfire-9.10.16.tgz
 ```
 
 Inflating the tarballs creates the following directories.
 
-| Software for VMs | Host OS Path |
-| ---------------- | ------------ |
-| JDK              | ~/Padogrid/products/linux/jdk-8u333-linux-x64 |
-| Geode            | ~/Padogrid/products/linux/apache-geode-1.14.4 |
+| Software for VMs | Host OS Path                                      |
+| ---------------- | ------------------------------------------------- |
+| JDK              | ~/Padogrid/products/linux/jdk-8u333-linux-x64     |
+| Geode            | ~/Padogrid/products/linux/apache-geode-1.14.4     |
+| GemFire          | ~/Padogrid/products/linux/pivotal-gemfire-9.10.16 |
 
 ### 2. Create VM-enabled workspace
 
@@ -145,12 +148,15 @@ update_product -product geode
 
 The `create_workspace` command shown below assumes the following proucts installed.
 
-| Software for Host OS | Host OS Path |
-| ---------------------| ------------ |
-| Geode                | `~/Padogrid/products/apache-geode-1.14.4` |
-| PadoGrid             | `~/Padogrid/products/padogrid_0.9.20`     |
+| Software for Host OS | Host OS Path                                  |
+| ---------------------| --------------------------------------------- |
+| Geode                | `~/Padogrid/products/apache-geode-1.14.4`     |
+| GemFire              | `~/Padogrid/products/pivotal-gemfire-9.10.16` |
+| PadoGrid             | `~/Padogrid/products/padogrid_0.9.20`         |
 
 Upon verifying the product installation directories, run the following command to create a VM-enabled workspace named `ws-geode-sb`. Note that you must provide full paths. The `vm_*` options are for Vagrant VM directory paths. The `~/Padogrid/products/linux` directory will be mounted on each VM as `/home/vagrant/products` later.
+
+**Geode:**
 
 ```bash
 # Create workspace named 'ws-geode-sb'
@@ -160,6 +166,21 @@ create_workspace -quiet \
   -vm \
   -vm-java /home/vagrant/products/ \
   -vm-product /home/vagrant/products/apache-geode-1.14.4 \
+  -vm-padogrid /home/vagrant/padogrid_0.9.20 \
+  -vm-workspaces /home/vagrant/workspaces \
+  -vm-user vagrant
+```
+
+**GemFire:**
+
+```bash
+# Create workspace named 'ws-geode-sb'
+create_workspace -quiet \
+  -name ws-geode-sb \
+  -product /Users/dpark/Padogrid/products/pivotal-gemfire-9.10.16 \
+  -vm \
+  -vm-java /home/vagrant/products/ \
+  -vm-product /home/vagrant/products/pivotal-gemfire-9.10.16 \
   -vm-padogrid /home/vagrant/padogrid_0.9.20 \
   -vm-workspaces /home/vagrant/workspaces \
   -vm-user vagrant
