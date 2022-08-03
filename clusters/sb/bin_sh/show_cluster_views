@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
+. $SCRIPT_DIR/.addonenv.sh
+
+BASE_DIR="$(dirname "$SCRIPT_DIR")"
+
+EXECUTABLE="`basename $0`"
+
+if [ "$HELP" == "true" ]; then
+cat <<EOF
+
+WORKSPACE
+   $PADOGRID_WORKSPACE
+
+NAME
+   $EXECUTABLE - Display cluster views in chronological order
+
+SYNOPSIS
+   ./$EXECUTABLE [-type received | sending ] [-?]
+
+DESRIPTION
+   Displays cluster views in chronological order. The cluster views are extracted from the locator logs only.
+
+DEFAULT:
+   ./$EXECUTABLE -type received
+
+EOF
+exit
+fi
+
+
+if [ "$TYPE_ARG" == "sending" ]; then
+   FILTER="sending new view"
+else
+   FILTER="received new view"
+fi
+FILTER2="these members failed to respond to the view change"
+
+LOCATOR_FILES="*locator*.log"
+
+TIMESTAMP=`date +%y%m%d-%H%M%S`
+TMP_FILE="/tmp/padogrid-$EXECUTABLE-$TIMESTAMP.log"
+if [ -f $TMP_FILE ]; then
+   rm $TMP_FILE
+fi
+pushd $APP_LOG_DIR > /dev/null 2>&1
+grep -e "$FILTER" -e "$FILTER2" *locator*.log > $TMP_FILE
+echo ""
+if [ "$TYPE_ARG" == "sending" ]; then
+   echo "Sending Views"
+   echo "-------------"
+else
+   echo "Received Views"
+   echo "--------------"
+fi 
+while IFS= read -r line; do
+   if [[ "$line" == *"$FILTER2"* ]]; then
+      echo $line | sed "s/$FILTER2.*$//"
+      line=$(echo $line | sed -e "s/^.*${FILTER2}: //" -e "s/\[//g" -e "s/\]//g")
+      echo "$TLel $FILTER2"
+      members=$line
+   else
+      echo $line | sed "s/$FILTER.*$//"
+      line=$(echo $line | sed -e "s/^.*${FILTER}: View//" -e "s/\[//g" -e "s/\]//g")
+      line=$(echo $line | sed -e "s/^.*$FILTER View//" -e "s/\[//g" -e "s/\]//g")
+      member=$(echo $line | sed 's/members: .*$//')
+      echo "$TLel $member"
+      members=$(echo $line | sed 's/^.*members://')
+   fi
+
+   # Determine member count
+
+   # Print members
+   count=0
+   is_crashed="false"
+   for i in $members; do
+      if [ "$is_crashed" != "true" ] && [ "$i" != "crashed:" ]; then
+         let count=count+1
+      fi
+   done
+   total=$count
+
+   count=0
+   is_crashed="false"
+   for i in $members; do
+      i=$(echo $i | sed 's/,//')
+      if [ "$is_crashed" == "true" ]; then
+         echo "    $TTee $i"
+      elif [ "$i" == "crashed:" ]; then
+         echo -e "    ${CError}$i${CNone}"
+         is_crashed="true"
+      else
+         let count=count+1
+         if [ $count -lt $total ]; then
+            echo "    $TTee $i"
+         else
+            echo "    $TLel $i"
+         fi
+      fi
+   done
+
+#   grep "$line" *locator*.log | awk '!a[$0]++'
+done < "$TMP_FILE"
+unset IFS
+rm $TMP_FILE
+popd > /dev/null 2>&1
+
+echo ""

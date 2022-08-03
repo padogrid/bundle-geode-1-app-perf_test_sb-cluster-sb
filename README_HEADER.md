@@ -1,1 +1,1 @@
-This bundle serves as a template for creating a new Geode bundle. Run `show_bundle bundle-geode-template` to see instructions.
+This bundle provides scripts, configuration files, and apps for creating a Geode/GemFire network split-brain environment where you can test Geode/GemFire split-brain capabilities.

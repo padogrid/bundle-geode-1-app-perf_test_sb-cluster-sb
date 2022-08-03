@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
+. $SCRIPT_DIR/.addonenv.sh
+
+BASE_DIR="$(dirname "$SCRIPT_DIR")"
+
+EXECUTABLE="`basename $0`"
+
+if [ "$HELP" == "true" ]; then
+cat <<EOF
+
+WORKSPACE
+   $PADOGRID_WORKSPACE
+
+NAME
+   $EXECUTABLE - Start cluster with node-03 as the lead
+
+SYNOPSIS
+   ./$EXECUTABLE [-?]
+
+DESRIPTION
+   Starts cluster with node-03 as the lead. This is done by starting the locators individually
+   and then the node-03 member in the foreground. Once node-03 is up, then the remaining nodes
+   are started. Use this with the Type 3 test case.
+
+EOF
+exit
+fi
+
+start_locator -num 1
+start_locator -num 2
+start_member -fg -num 3
+start_member -num 1
+start_member -num 2
+start_member -num 4
+start_member -num 5

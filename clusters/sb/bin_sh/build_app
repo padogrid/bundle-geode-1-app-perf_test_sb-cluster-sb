@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+
+# ========================================================================
+# Copyright (c) 2020-2022 Netcrest Technologies, LLC. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
+. $SCRIPT_DIR/.addonenv.sh
+
+EXECUTABLE="`basename $0`"
+
+if [ "$HELP" == "true" ]; then
+cat <<EOF
+NAME
+   $EXECUTABLE - Build the cluster environment for the workspace
+
+SYNOPSIS
+   $EXECUTABLE [-clean] [-?]
+
+DESCRIPTION
+   Builds the cluster environment for the workspace. It downloads the Spring Data
+   for GemFire dependencies and places them in the following workspace lib directory.
+
+   $PADOGRID_WORKSPACE/lib
+
+OPTIONS
+   -clean
+             Cleans up the build files after the build completes.
+
+PROPERTIES
+   spring.bootstrap.enabled
+             To enable Spring bootstrap, this property must be set to "true" in
+             the following 'cluster.properties' file.
+
+             $CLUSTER_DIR/etc/cluster.properties
+
+NOTES
+   You can configure Geode/GemFire members in the 'etc/application-context.xml' file.
+
+DEFAULT
+   ./$EXECUTABLE
+EOF
+   exit
+fi
+
+pushd $CLUSTER_DIR > /dev/null
+mvn install
+popd > /dev/null
+
+cp $APP_DIR/lib/* $PADOGRID_WORKSPACE/lib/
+# Remove the build files if the -clean option is specified.
+if [ "$CLEAN" == "true" ]; then
+   rm -rf $APP_DIR/lib
+fi
+
+#
+# Display build information
+#
+cat <<EOF
+
+Workspace: $PADOGRID_WORKSPACE
+
+Downloaded the required library files into the following directory.
+
+   $PADOGRID_WORKSPACE/lib
+
+CLASSPATH includes the above directory for all apps and clusters running under
+this workspace.
+
+EOF
+
+echo -e "   ${CBrownOrange}spring.bootstrap.enabled=$SPRING_BOOTSTRAP_ENABLED${CNone}"
+echo ""
+
+SPRING_BOOTSTRAP_ENABLED=$(getClusterProperty "spring.bootstrap.enabled" "false")
+if [ "$SPRING_BOOTSTRAP_ENABLED" == "true" ]; then
+   echo "Spring bootstrap is enabled. This cluster will boostrap using the Spring Container."
+   echo "To disable Spring boostrap, set spring.bootstrap.enabled=false in 'etc/cluster.properties'."
+else
+  echo "Spring bootstrap is disabled. To bootstrap this cluster with the Spring Container,"
+  echo "you must set spring.bootstrap.enabled=true in the 'etc/cluster.properties' file."
+fi
+echo ""

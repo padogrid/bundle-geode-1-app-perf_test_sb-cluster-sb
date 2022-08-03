@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
+. $SCRIPT_DIR/.addonenv.sh
+
+BASE_DIR="$(dirname "$SCRIPT_DIR")"
+
+EXECUTABLE="`basename $0`"
+
+if [ "$HELP" == "true" ]; then
+cat <<EOF
+
+WORKSPACE
+   $PADOGRID_WORKSPACE
+
+NAME
+   $EXECUTABLE - Install ntpd in all the VMs
+
+SYNOPSIS
+   ./$EXECUTABLE [-?]
+
+DESRIPTION
+   Installs ntpd in all the VMs.
+
+EOF
+exit
+fi
+
+echo ssh -qn pnode.local "sudo apt-get install ntp"
+ssh -qn pnode.local "sudo apt-get -y install ntp"
+for i in $(seq 7); do
+   echo ssh -qn node-0$i.local "sudo apt-get install ntp"
+   ssh -qn node-0$i.local "sudo apt-get -y install ntp"
+done

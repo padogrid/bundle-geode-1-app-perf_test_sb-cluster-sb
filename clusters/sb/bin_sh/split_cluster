@@ -1,0 +1,237 @@
+#!/usr/bin/env bash
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
+. $SCRIPT_DIR/.addonenv.sh
+
+BASE_DIR="$(dirname "$SCRIPT_DIR")"
+
+EXECUTABLE="`basename $0`"
+
+if [ "$HELP" == "true" ]; then
+cat <<EOF
+
+WORKSPACE
+   $PADOGRID_WORKSPACE
+
+NAME
+   $EXECUTABLE - Split the cluster $CLUSTER into two (2)
+
+SYNOPSIS
+   ./$EXECUTABLE -type 1|2|3|4|5 [interface] [-?]
+
+DESRIPTION
+   Splits the cluster $CLUSTER into two (2) by applying iptables rules.
+
+OPTIONS
+   -type 1|2|3|4|5|6
+            Network split type as shown below.
+
+            Type 1: Split A without locators
+            | Split | Weight   | VM Hosts                                               |
+            | ----- | -------- | ------------------------------------------------------ |
+            | A     | 25 (41%) | node-01 (lead), node-02                                |
+            | B     | 36 (59%) | node-03, node-04, node-05, node-06, node-07 (locators) |
+
+            Type 2: Split A and B each with a locator
+            | Split  | Weight   | VM Hosts                                               |
+            | ------ | -------- | ------------------------------------------------------ |
+            | A      | 28 (46%) | node-01 (lead), node-02, node-06 (locator)             |
+            | B      | 33 (54%) | node-03, node-04, node-05, node-07 (locator)           |
+
+            Type 3: Split B quorum without locators
+            | Split | Weight   | VM Hosts                                               |
+            | ----- | -------- | ------------------------------------------------------ |
+            | A     | 26 (43%) | node-01, node-02, node-06, node-07 (locators)          |
+            | B     | 35 (57%) | node-03 (lead), node-04, node-05                       |
+
+            Type 4: Split A with locators but without data nodes
+            | Split | Weight   | VM Hosts                                               |
+            | ----- | -------- | ------------------------------------------------------ |
+            | A     | 6 (10%)  | node-06, node-07 (locators)                            |
+            | B     | 55 (90%) | node-01 (lead), node-02, node-03, node-04, node-05     |
+
+
+            Type 5: Split A and B with both locators
+            | Split | Weight   | VM Hosts                                               |
+            | ----- | -------- | ------------------------------------------------------ |
+            | A     | 31 (51%) | node-01 (lead), node-02, node-06, node-07 (locators)   |
+            | B     | 36 (59%) | node-03, node-04, node-05, node-06, node-07 (locators) |
+
+   interface
+             Network interface. Run 'ifconfig' or 'ip addr' to determine the network interface
+             that your host name is mapped to. For example, on ubuntu/trusty64, it would be
+             'eth1' and on ubuntu/binic64, it would be 'enp0s8'.  Default: eth1
+
+SEE ALSO
+   merge_cluster, list_rules
+
+EOF
+exit
+fi
+
+if [ "$TYPE_ARG" == "" ]; then
+   echo >&2 -e "${CError}ERROR:${CNone} '-type' is not specified. Command aborted."
+   echo >&2 -e "       Usage: ./$EXECUTABLE -type 1|2|3|4|5 [interface] [-?]"
+   exit 1
+fi
+
+if [ "$TYPE_ARG" != "$LAST_ARG" ]; then
+   INTERFACE=$LAST_ARG
+fi
+
+if [ "$INTERFACE" == "" ]; then
+   INTERFACE="eth1"
+fi
+
+echo ""
+echo "Interface: ${INTERFACE}"
+echo ""
+
+case "$TYPE_ARG" in
+
+1)
+
+ssh -q -n node-01.local "\
+sudo iptables -A INPUT -i ${INTERFACE} -s node-03.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-04.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-05.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-06.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-07.local -j DROP"
+
+ssh -q -n node-02.local "\
+sudo iptables -A INPUT -i ${INTERFACE} -s node-03.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-04.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-05.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-06.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-07.local -j DROP"
+
+cat <<EOF
+Cluster split complete. The cluster $CLUSTER has been split into two (2) as follows:
+
+Type 1: Split A without locators
+| Split | Weight   | VM Hosts                                               |
+| ----- | -------- | ------------------------------------------------------ |
+| A     | 25 (41%) | node-01 (lead), node-02                                |
+| B     | 36 (59%) | node-03, node-04, node-05, node-06, node-07 (locators) |
+EOF
+;;
+
+2)
+
+ssh -q -n node-01.local "\
+sudo iptables -A INPUT -i ${INTERFACE} -s node-03.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-04.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-05.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-07.local -j DROP"
+
+ssh -q -n node-02.local "\
+sudo iptables -A INPUT -i ${INTERFACE} -s node-03.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-04.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-05.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-07.local -j DROP"
+
+ssh -q -n node-06.local "\
+sudo iptables -A INPUT -i ${INTERFACE} -s node-03.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-04.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-05.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-07.local -j DROP"
+
+cat <<EOF
+Cluster split complete. The cluster $CLUSTER has been split into two (2) as follows:
+
+Type 2: Split A and B each with a locator
+| Split | Weight   | VM Hosts                                               |
+| ------| -------- | ------------------------------------------------------ |
+| A     | 28 (46%) | node-01 (lead), node-02, node-06 (locator)             |
+| B     | 33 (54%) | node-03, node-04, node-05, node-07 (locator)           |
+EOF
+;;
+
+3)
+
+ssh -q -n node-01.local "\
+sudo iptables -A INPUT -i ${INTERFACE} -s node-03.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-04.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-05.local -j DROP"
+
+ssh -q -n node-02.local "\
+sudo iptables -A INPUT -i ${INTERFACE} -s node-03.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-04.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-05.local -j DROP"
+
+ssh -q -n node-06.local "\
+sudo iptables -A INPUT -i ${INTERFACE} -s node-03.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-04.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-05.local -j DROP"
+
+ssh -q -n node-07.local "\
+sudo iptables -A INPUT -i ${INTERFACE} -s node-03.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-04.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-05.local -j DROP"
+
+cat <<EOF
+Cluster split complete. The cluster $CLUSTER has been split into two (2) as follows:
+
+Type 3: Split B quorum without locators
+| Split | Weight   | VM Hosts                                               |
+| ----- | -------- | ------------------------------------------------------ |
+| A     | 26 (43%) | node-01, node-02, node-06, node-07 (locators)          |
+| B     | 35 (57%) | node-03 (lead), node-04, node-05                       |
+EOF
+;;
+
+4)
+
+ssh -q -n node-06.local "\
+sudo iptables -A INPUT -i ${INTERFACE} -s node-01.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-02.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-03.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-04.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-05.local -j DROP"
+
+ssh -q -n node-07.local "\
+sudo iptables -A INPUT -i ${INTERFACE} -s node-01.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-02.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-03.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-04.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-05.local -j DROP"
+
+cat <<EOF
+Cluster split complete. The cluster $CLUSTER has been split into two (2) as follows:
+
+Type 4: Split A with locators but without data nodes
+| Split | Weight   | VM Hosts                                               |
+| ----- | -------- | ------------------------------------------------------ |
+| A     | 6 (10%)  | node-06, node-07 (locators)                            |
+| B     | 55 (90%) | node-01 (lead), node-02, node-03, node-04, node-05     |
+EOF
+;;
+
+5)
+
+ssh -q -n node-01.local "\
+sudo iptables -A INPUT -i ${INTERFACE} -s node-03.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-04.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-05.local -j DROP"
+
+ssh -q -n node-02.local "\
+sudo iptables -A INPUT -i ${INTERFACE} -s node-03.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-04.local -j DROP; \
+sudo iptables -A INPUT -i ${INTERFACE} -s node-05.local -j DROP"
+
+cat <<EOF
+Cluster split complete. The cluster $CLUSTER has been split into two (2) as follows:
+
+Type 5: Split A and B with both locators
+| Split | Weight   | VM Hosts                                               |
+| ----- | -------- | ------------------------------------------------------ |
+| A     | 31 (51%) | node-01 (lead), node-02, node-06, node-07 (locators)   |
+| B     | 36 (59%) | node-03, node-04, node-05, node-06, node-07 (locators) |
+EOF
+;;
+
+
+esac
+
+echo ""
+echo "To merge the split clusters, run the 'merge_cluster' command."
+echo ""

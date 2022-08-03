@@ -7,21 +7,18 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
+# https://github.com/takari/maven-wrapper#usage-without-binary-jar
 .mvn/wrapper/maven-wrapper.jar
-
-# Eclipse
-.classpath
-.project
-.settings
-
-# VS Code
-workspace.code-workspace
-
-# macOS
-.DS_Store
 
 # vi
 *.swp
+
+# Eclipse
+.project
+.settings
+
+# macOS
+.DS_Store
 
 # PadoGrid workspace
 /.addonenv.sh
@@ -30,30 +27,28 @@ workspace.code-workspace
 bundles
 lib
 plugins
-.ipynb_checkpoints
+run
+.workspace
+.cluster
+workspace.code-workspace
 
 # PadoGrid workspace directories
-apps
-clusters
+#apps
+#clusters
 docker
 k8s
 pods
-.workspace
-.cluster
-
-# Geode specifics
-*.gfs
 
 # Bundle specifics
 archive
 log
+stats
 lib
 desktop
+setenv.sh0
 build
-stats
-run
-results
+apps/perf_test_sb/results
+apps/desktop_sb
+*.log
+tmp
 *.drawio.bkp
-*.sh0
-pom.xml0
-build
