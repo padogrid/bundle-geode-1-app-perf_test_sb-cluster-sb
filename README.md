@@ -40,9 +40,10 @@ This bundle provides scripts, configuration files, and apps for creating a Geode
     - [Type 5 - Merger](#type-5---merger)
     - [Type 5 Summary](#type-5-summary)
 - [Test Results](#test-results)
-- [GemFire Network Partition Diagnosis](#gemfire-network-partition-diagnosis)
-- [GemFire Network Partition Prognosis](#gemfire-network-partition-prognosis)
-- [GemFire Cluster Recovery Guidelines](#gemfire-cluster-recovery-guidelines)
+- [GemFire Network Partition](#gemfire-network-partition)
+  - [Diagnosis](#diagnosis)
+  - [Prognosis](#prognosis)
+  - [Recovery Guidelines](#recovery-guidelines)
 - [Teardown](#Teardown)
   - [Stop Cluster](#stop-cluster)
   - [Stop Pod](#stop-pod)
@@ -2329,7 +2330,9 @@ In the mean time, Pulse continues to see all the members as if nothing happened.
 
 ---
 
-## GemFire Network Partition Diagnosis
+## GemFire Network Partition
+
+### Diagnosis
 
 Based on our findings, we can put together a flow chart showing the steps involved in determining the network partition type.
 
@@ -2337,7 +2340,7 @@ Based on our findings, we can put together a flow chart showing the steps involv
 
 ---
 
-## GemFire Network Partition Prognosis
+### Prognosis
 
 We can use the [Test Results](#test-results) to create a prognosis for each network partition type as follows.
 
@@ -2357,39 +2360,44 @@ We can use the [Test Results](#test-results) to create a prognosis for each netw
 
 ---
 
-## GemFire Cluster Recovery Guidelines
+### Recovery Guidelines
 
-Based on the test results, we can also provide guidelines for recovering from each network partition type.
+Based on the test results, we can provide guidelines for recovering from each network partition type.
 
-### Type 1, Type 2
+#### Type 1, Type 2
 
 1. Fix network issues if any.
 1. Check each member to see their CPU usage and available system resources.
-1. Gracefully stop members in Split A if they are not responding due to system resource limitations.
-1. Increase system resources for those members as needed and restart them.
-1. Let GemFire auto-recover.
+1. Gracefully stop members in Split A.
+1. Identify members that ran out of system resources.
+1. Increase system resources as needed for those members.
+1. Restart the stopped members.
+1. Wait for GemFire to auto-recover.
 1. Once the restarted members have successfully rejoined the cluster, check for data loss. 
 1. GemFire is expected to fully recover persistent data.
 1. Reingest non-persistent data.
 
 :exclamation: Be aware that auto-restart can take a long time to complete depending on the data volume, disk speeds, and the number of failed members. For our simple cluster, it took nearly five (5) minutes. Expect a much longer time to complete for larger clusters.
 
-### Type 3, Type 4
+#### Type 3, Type 4
 
 1. Fix network issues if any.
 1. Check each member to see their CPU usage and available system resources.
 1. Stop or kill all members including the locators.
-1. Restart the cluster in a clean state.
 1. Make sure to remove all data stores before restarting the cluster.
+1. Restart the cluster in a clean state.
 1. Reingest persistent and non-persistent data.
 
-### Type 5
+#### Type 5
 
 1. Fix network issues if any.
 1. Check each member to see their CPU usage and available system resources.
-1. Gracefully stop members (not locators) in Split A if they are not responding due to system resource limitations.
+1. Gracefully stop members (not locators) in Split A.
 1. Increase system resources for those members as needed and restart them.
-1. Let GemFire auto-recover.
+1. Identify members that ran out of system resources.
+1. Increase system resources as needed for those members.
+1. Restart the stopped members.
+1. WAit for GemFire to auto-recover.
 1. Once the restarted members have successfully rejoined the cluster, check for data loss.
 1. Data loss is not expected but be prepared to reingest data for the regions with inconsistency.
 1. Check client applications.
