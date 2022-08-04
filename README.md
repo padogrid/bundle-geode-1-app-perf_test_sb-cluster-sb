@@ -2367,7 +2367,7 @@ Based on the test results, we can provide guidelines for recovering from each ne
 #### Type 1, Type 2
 
 1. Fix network issues if any.
-1. Check each member to see their CPU usage and available system resources.
+1. Check each member's CPU usage and available system resources.
 1. Gracefully stop members in Split A.
 1. Identify members that ran out of system resources.
 1. Increase system resources as needed for those members.
@@ -2391,15 +2391,15 @@ Based on the test results, we can provide guidelines for recovering from each ne
 #### Type 5
 
 1. Fix network issues if any.
-1. Check each member to see their CPU usage and available system resources.
+1. Check each member's CPU usage and available system resources.
 1. Gracefully stop members (not locators) in Split A.
 1. Increase system resources for those members as needed and restart them.
 1. Identify members that ran out of system resources.
 1. Increase system resources as needed for those members.
 1. Restart the stopped members.
-1. WAit for GemFire to auto-recover.
+1. Wait for GemFire to auto-recover.
 1. Once the restarted members have successfully rejoined the cluster, check for data loss.
-1. Data loss is not expected but be prepared to reingest data for the regions with inconsistency.
+1. Data loss is not expected but be prepared to reingest data for the regions with data inconsistency.
 1. Check client applications.
 
 ---
