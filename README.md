@@ -13,7 +13,7 @@ This bundle provides scripts, configuration files, and apps for creating a Geode
 - [Bundle Contents](#bundle-contents)
 - [Installation Steps](#installation-steps)
   - [1. Install Linux products](#1-install-linux-products)
-  - [2. Create VM-enabled workspace](#2-create-vm-enabled-workspace)
+  - [2. Install Geode or GemFire on host OS](#2-install-geode-or-gemfire-on-host-os)
   - [3. Create pod](#3-create-pod)
   - [4. Build pod](#4-build-pod)
 - [Startup Sequence](#startup-sequence)
@@ -135,16 +135,20 @@ Inflating the tarballs creates the following directories.
 | Geode            | ~/Padogrid/products/linux/apache-geode-1.14.4     |
 | GemFire          | ~/Padogrid/products/linux/pivotal-gemfire-9.10.16 |
 
-### 2. Create VM-enabled workspace
+### 2. Install Geode or GemFire on host OS
 
 :pencil2: In the previous section, we have installed software for the Vagrant VMs. If your host OS is Linux then you can use the same software by specifying the same directories.
 
 By default, PadoGrid installs all the products the `~/Padogrid/product` directory. If you have not installed Geode in that directory, then do so now by running the following commands.
 
 ```bash
-# Install Geode in Host OS if not already installed
-install_product -product geode
+# Install Geode on Host OS if not already installed
+tar -C ~/Padogrid/products ~/Downloads/apache-geode-1.14.4.tgz
 update_product -product geode
+
+# Install GemFire on Host OS if not alrady installed
+tar -C ~/Padogrid/products ~/Downloads/pivotal-gemfire-9.10.16.tgz
+update_product -product gemfire
 ```
 
 The `create_workspace` command shown below assumes the following proucts installed.
@@ -155,41 +159,9 @@ The `create_workspace` command shown below assumes the following proucts install
 | GemFire              | `~/Padogrid/products/pivotal-gemfire-9.10.16` |
 | PadoGrid             | `~/Padogrid/products/padogrid_0.9.20`         |
 
-Upon verifying the product installation directories, run the following command to create a VM-enabled workspace named `ws-geode-sb`. Note that you must provide full paths. The `vm_*` options are for Vagrant VM directory paths. The `~/Padogrid/products/linux` directory will be mounted on each VM as `/home/vagrant/products` later.
-
-**Geode:**
-
-```bash
-# Create workspace named 'ws-geode-sb'
-create_workspace -quiet \
-  -name ws-geode-sb \
-  -product /Users/dpark/Padogrid/products/apache-geode-1.14.4 \
-  -vm \
-  -vm-java /home/vagrant/products/ \
-  -vm-product /home/vagrant/products/apache-geode-1.14.4 \
-  -vm-padogrid /home/vagrant/padogrid_0.9.20 \
-  -vm-workspaces /home/vagrant/workspaces \
-  -vm-user vagrant
-```
-
-**GemFire:**
-
-```bash
-# Create workspace named 'ws-geode-sb'
-create_workspace -quiet \
-  -name ws-geode-sb \
-  -product /Users/dpark/Padogrid/products/pivotal-gemfire-9.10.16 \
-  -vm \
-  -vm-java /home/vagrant/products/ \
-  -vm-product /home/vagrant/products/pivotal-gemfire-9.10.16 \
-  -vm-padogrid /home/vagrant/padogrid_0.9.20 \
-  -vm-workspaces /home/vagrant/workspaces \
-  -vm-user vagrant
-```
-
 ### 3. Create pod
 
-Create a pod named `pod_sb` with five (6) data nodes. The pod name must be `pod_sb` since the included cluster, `sb`, has been paired with that pod name. Each VM should have at least 1024 MiB of memory.
+Create a pod named `pod_sb` with seven (7) nodes. The pod name must be `pod_sb` since the included cluster, `sb`, has been paired with that pod name. Each VM should have at least 1024 MiB of memory.
 
 ```bash
 # Directory specified by '-dir' is the host OS directory where the JDK and IMDG are installed.
