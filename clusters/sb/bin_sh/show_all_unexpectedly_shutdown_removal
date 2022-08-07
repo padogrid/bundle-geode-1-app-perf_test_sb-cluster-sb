@@ -33,7 +33,7 @@ TIMESTAMP=`date +%y%m%d-%H%M%S`
 TMP_FILE="/tmp/padogrid-$EXECUTABLE-$TIMESTAMP.log"
 
 pushd $APP_LOG_DIR > /dev/null 2>&1
-grep "unexpectedly shut down" *.log | grep "Membership received a request to remove" | sed -e 's/^.*Membership received a request to remove//' -e 's/).*$/)/' -e 's/^ //' | awk '!a[$0]++' | sort > $TMP_FILE
+grep "unexpectedly shut down" $ALL_FILES | grep "Membership received a request to remove" | sed -e 's/^.*Membership received a request to remove//' -e 's/).*$/)/' -e 's/^ //' | awk '!a[$0]++' | sort > $TMP_FILE
 echo ""
 echo "Members removed from the cluster:"
 echo "---------------------------------"
@@ -51,4 +51,5 @@ popd > /dev/null 2>&1
 
 echo "The members unexpectedly removed from the cluster maybe still running. If so, it is"
 echo "possible that they have formed a cluster of their own, leading to a split-brain scenario."
+echo "Now: $(date '+%Y/%m/%d-%H:%M:%S %Z')"
 echo ""

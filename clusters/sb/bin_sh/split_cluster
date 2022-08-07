@@ -229,7 +229,6 @@ Type 5: Split A and B with both locators
 EOF
 ;;
 
-
 esac
 
 echo ""

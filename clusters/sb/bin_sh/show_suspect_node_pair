@@ -61,7 +61,7 @@ fi
 # Log files and time stamps excluded
 #
 #pushd $APP_LOG_DIR > /dev/null 2>&1
-#grep suspect *.log  | grep "received suspect.*${SUSPECT_NODE}.*for " | grep $SUSPECT_NODE | grep "$FOR_NODE" | sed 's/^.*suspect/suspect/' | awk '!a[$0]++' | grep "$FOR_NODE"
+#grep suspect $ALL_FILES  | grep "received suspect.*${SUSPECT_NODE}.*for " | grep $SUSPECT_NODE | grep "$FOR_NODE" | sed 's/^.*suspect/suspect/' | awk '!a[$0]++' | grep "$FOR_NODE"
 #popd > /dev/null 2>&1
 
 
@@ -69,7 +69,7 @@ fi
 # Log files and tiemstamps included
 #
 pushd $APP_LOG_DIR > /dev/null 2>&1
-grep suspect *.log  | grep "received suspect.*${SUSPECT_NODE}.*for " | grep $SUSPECT_NODE | grep "$FOR_NODE" | sed 's/^.*suspect/suspect/' | awk '!a[$0]++' | grep "$FOR_NODE" > $TMP_FILE
+grep suspect $ALL_FILES  | grep "received suspect.*${SUSPECT_NODE}.*for " | grep $SUSPECT_NODE | grep "$FOR_NODE" | sed 's/^.*suspect/suspect/' | awk '!a[$0]++' | grep "$FOR_NODE" > $TMP_FILE
 if [ "$IS_FIRST" == "true" ]; then
    while IFS= read -r line; do
       grep "$line" *.log | head -n 1

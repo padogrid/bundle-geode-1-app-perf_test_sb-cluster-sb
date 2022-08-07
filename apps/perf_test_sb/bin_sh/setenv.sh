@@ -38,7 +38,6 @@ JAVA_OPTS="-Xms1g -Xmx1g"
 # GEODE_CLIENT_CONFIG_FILE defaults to etc/client-cache.xml
 JAVA_OPTS="$JAVA_OPTS -DgemfirePropertyFile=$GEMFIRE_PROPERTY_FILE"
 
-echo debug: TYPE_ARG=$TYPE_ARG
 if [ "$TYPE_ARG" == "servers" ]; then
    GEODE_CLIENT_CONFIG_FILE="$APP_ETC_DIR/client-cache-servers.xml"
 fi

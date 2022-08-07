@@ -17,10 +17,17 @@ NAME
    $EXECUTABLE - Display cluster views in chronological order
 
 SYNOPSIS
-   ./$EXECUTABLE [-type received | sending ] [-?]
+   ./$EXECUTABLE [-type received | sending ] [-short] [-?]
 
 DESRIPTION
    Displays cluster views in chronological order. The cluster views are extracted from the locator logs only.
+
+OPTIONS
+   -type received | sending
+             'received" displays received views, 'sending' displays sending views. Default: received
+
+   -short
+             If specified, displays condensed views.
 
 DEFAULT:
    ./$EXECUTABLE -type received
@@ -37,15 +44,13 @@ else
 fi
 FILTER2="these members failed to respond to the view change"
 
-LOCATOR_FILES="*locator*.log"
-
 TIMESTAMP=`date +%y%m%d-%H%M%S`
 TMP_FILE="/tmp/padogrid-$EXECUTABLE-$TIMESTAMP.log"
 if [ -f $TMP_FILE ]; then
    rm $TMP_FILE
 fi
 pushd $APP_LOG_DIR > /dev/null 2>&1
-grep -e "$FILTER" -e "$FILTER2" *locator*.log > $TMP_FILE
+grep -e "$FILTER" -e "$FILTER2" $LOCATOR_FILES > $TMP_FILE
 echo ""
 if [ "$TYPE_ARG" == "sending" ]; then
    echo "Sending Views"
@@ -55,13 +60,23 @@ else
    echo "--------------"
 fi 
 while IFS= read -r line; do
+   log_file=$(echo $line | sed 's/:.*$//')
+   timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER-.*$//"  -e 's/info.*//i')
    if [[ "$line" == *"$FILTER2"* ]]; then
-      echo $line | sed "s/$FILTER2.*$//"
+      if [ "$SHORT" == "true" ]; then
+         echo -e "$log_file: ${CBrownOrange}$timestamp${CNone}"
+      else
+         echo $line | sed "s/$FILTER2.*$//"
+      fi
       line=$(echo $line | sed -e "s/^.*${FILTER2}: //" -e "s/\[//g" -e "s/\]//g")
       echo "$TLel $FILTER2"
       members=$line
    else
-      echo $line | sed "s/$FILTER.*$//"
+      if [ "$SHORT" == "true" ]; then
+         echo -e "$log_file: ${CBrownOrange}$timestamp${CNone}"
+      else
+        echo $line | sed "s/$FILTER.*$//"
+      fi
       line=$(echo $line | sed -e "s/^.*${FILTER}: View//" -e "s/\[//g" -e "s/\]//g")
       line=$(echo $line | sed -e "s/^.*$FILTER View//" -e "s/\[//g" -e "s/\]//g")
       member=$(echo $line | sed 's/members: .*$//')
@@ -74,8 +89,12 @@ while IFS= read -r line; do
    # Print members
    count=0
    is_crashed="false"
+   is_shutdown="false"
    for i in $members; do
       if [ "$is_crashed" != "true" ] && [ "$i" != "crashed:" ]; then
+         let count=count+1
+      fi
+      if [ "$is_shutdown" != "true" ] && [ "$i" != "shutdown:" ]; then
          let count=count+1
       fi
    done
@@ -90,6 +109,9 @@ while IFS= read -r line; do
       elif [ "$i" == "crashed:" ]; then
          echo -e "    ${CError}$i${CNone}"
          is_crashed="true"
+      elif [ "$i" == "shutdown:" ]; then
+         echo -e "    ${CError}$i${CNone}"
+         is_shutdown="true"
       else
          let count=count+1
          if [ $count -lt $total ]; then
@@ -106,4 +128,5 @@ unset IFS
 rm $TMP_FILE
 popd > /dev/null 2>&1
 
+echo "Now: $(date '+%Y/%m/%d-%H:%M:%S %Z')"
 echo ""

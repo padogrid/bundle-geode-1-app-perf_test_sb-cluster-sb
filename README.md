@@ -885,6 +885,10 @@ group: g1
 
 If we choose not to merge the splits, then you can revoke missing disk stores so that the members in Split B can join the cluster. We would lose data held by the members in Split A, however. The following `gfsh` output shows the outcome of revoking disk stores.
 
+:pencil2: You may not be able to connect via `gfsh` until the cluster has been auto-restarted, which may take a few minutes. You can run `./show_membership_service_failure` to check the restart status.
+
+:pencil2: You may not be able to connect via `gfsh` for older versions of Geode and GemFire. For example, GemFire 9.10.13 returns the HTTP error 404. The following was tested with Geode 1.14.4.
+
 ```bash
 gfsh
 gfsh>connect --url=http://node-07.local:7070/geode-mgmt/v1

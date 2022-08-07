@@ -78,3 +78,7 @@ fi
 #RUN_SCRIPT=$CLUSTER_DIR/bin_sh/your-script
 
 ALL_NODES="node-01 node-02 node-03 node-04 node-05 node-06 node-07"
+
+LOCATOR_FILES="*locator*.log"
+SERVER_FILES="$CLUSTER-node*.log"
+ALL_FILES="*.log"

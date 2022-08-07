@@ -34,7 +34,7 @@ if [ -f $TMP_FILE ]; then
    rm $TMP_FILE
 fi
 pushd $APP_LOG_DIR > /dev/null 2>&1
-grep -e "$FILTER1" -e "$FILTER2" *.log > $TMP_FILE
+grep -e "$FILTER1" -e "$FILTER2" $ALL_FILES > $TMP_FILE
 echo ""
 echo "Stuck Threads"
 echo "-------------"
@@ -90,3 +90,4 @@ fi
 rm $TMP_FILE
 popd > /dev/null 2>&1
 
+echo "Now: $(date '+%Y/%m/%d-%H:%M:%S %Z')"
