@@ -79,4 +79,4 @@ for SUSPECT_NODE in $SUSPECT_NODES; do
    fi
    echo ""
 done
-echo "Now: $(date '+%Y/%m/%d-%H:%M:%S %Z')"
+echo -e "Now: ${CBrownOrange}$(date '+%Y/%m/%d %H:%M:%S %Z')${CNone}"

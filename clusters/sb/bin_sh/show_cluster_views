@@ -128,5 +128,5 @@ unset IFS
 rm $TMP_FILE
 popd > /dev/null 2>&1
 
-echo "Now: $(date '+%Y/%m/%d-%H:%M:%S %Z')"
+echo -e "Now: ${CBrownOrange}$(date '+%Y/%m/%d %H:%M:%S %Z')${CNone}"
 echo ""

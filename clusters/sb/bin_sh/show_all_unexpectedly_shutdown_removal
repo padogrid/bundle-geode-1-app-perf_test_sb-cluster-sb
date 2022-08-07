@@ -51,5 +51,5 @@ popd > /dev/null 2>&1
 
 echo "The members unexpectedly removed from the cluster maybe still running. If so, it is"
 echo "possible that they have formed a cluster of their own, leading to a split-brain scenario."
-echo "Now: $(date '+%Y/%m/%d-%H:%M:%S %Z')"
+echo -e "Now: ${CBrownOrange}$(date '+%Y/%m/%d %H:%M:%S %Z')${CNone}"
 echo ""
