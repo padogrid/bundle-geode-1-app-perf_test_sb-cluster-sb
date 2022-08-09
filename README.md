@@ -165,13 +165,13 @@ Create a pod named `pod_sb` with seven (7) nodes. The pod name must be `pod_sb` 
 
 ```bash
 # Directory specified by '-dir' is the host OS directory where the JDK and IMDG are installed.
-# Configure 1024 MiB for primary and data nodes. Enable Avahi to allow hostname lookup of
+# Configure 1536 MiB for primary and data nodes. Enable Avahi to allow hostname lookup of
 # *.local hostnames via mDNS, i.e., pnode.local, node-01.local, etc.
 create_pod -quiet \
   -avahi \
   -pod pod_sb \
-  -pm 1024 \
-  -nm 1024 \
+  -pm 1536 \
+  -nm 1536 \
   -count 7 \
   -dir /Users/dpark/Padogrid/products/linux
 ```
@@ -215,7 +215,52 @@ switch_cluster sb/bin_sh
 ./install_ntpd
 ```
 
-### 2. Start Cluster
+### 2. Update `/etc/hosts`
+
+Due to Vagrant security restrictions, we need to edit each node's `/etc/hosts` and add a respective host name entry. The included `list_etc_host` script lists all the VM host names defined in the `etc/cluster.properties`.
+
+From `pnode.local`, run `list_etc_hosts` as follows.
+
+```bash
+cd_cluster sb/bin_sh
+./list_etc_hosts
+```
+
+Output:
+
+```console
+192.168.56.10 pnode pnode.local
+192.168.56.11 node-01 node-01.local
+192.168.56.12 node-02 node-02.local
+192.168.56.13 node-03 node-03.local
+192.168.56.14 node-04 node-04.local
+192.168.56.15 node-05 node-05.local
+192.168.56.16 node-06 node-06.local
+192.168.56.17 node-07 node-07.local
+```
+
+Copy and paste the output in each host's `/etc/hosts` file. Make sure to comment out the `127.0.0.1` entry as shown in the example below.
+
+```bash
+ssh node-01.local
+sudo vi /etc/hosts
+```
+
+Edit `/etc/hosts`:
+
+```console
+#127.0.1.1 node-01 node-01
+192.168.56.10 pnode pnode.local
+192.168.56.11 node-01 node-01.local
+192.168.56.12 node-02 node-02.local
+192.168.56.13 node-03 node-03.local
+192.168.56.14 node-04 node-04.local
+192.168.56.15 node-05 node-05.local
+192.168.56.16 node-06 node-06.local
+192.168.56.17 node-07 node-07.local
+```
+
+### 3. Start Cluster
 
 From `pnode.local`, start the `sb` cluster as follows:
 
@@ -228,7 +273,7 @@ switch_cluster sb/bin_sh
 show_cluster
 ```
 
-### 3. Monitor Pulse
+### 4. Monitor Pulse
 
 Enter the following URL in your browser to monitor the cluster from the Geode Pulse.
 
@@ -236,7 +281,7 @@ Enter the following URL in your browser to monitor the cluster from the Geode Pu
 
 ![Pulse Schreenshot](images/pulse-start.png)
 
-### 4. Ingest data - `perf_test_sb`
+### 5. Ingest data - `perf_test_sb`
 
 From your host OS, build `perf_test_sb` and run `test_group` as follows:
 

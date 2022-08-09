@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
+. $SCRIPT_DIR/.addonenv.sh
+
+BASE_DIR="$(dirname "$SCRIPT_DIR")"
+
+EXECUTABLE="`basename $0`"
+
+if [ "$HELP" == "true" ]; then
+cat <<EOF
+
+WORKSPACE
+   $PADOGRID_WORKSPACE
+
+NAME
+   $EXECUTABLE - List host entries to be added in /etc/hosts
+
+SYNOPSIS
+   ./$EXECUTABLE [-?]
+
+DESRIPTION
+   Lists host entries to be added in /etc/hosts. You must add the entry that corresponds to each
+   node in their respective /etc/host. Or simply, add the entire list in each node's /etc/hosts.
+   This is required in order to override the 127.0.1.1 entry. Make sure to comment out the 
+   127.0.1.1 entry as shown in the example below.
+
+EXAMPLE:
+   ssh node-01.local
+   sudo vi /etc/hosts
+
+   #127.0.1.1 pnode pnode
+   192.168.56.10 pnode pnode.local
+   192.168.56.11 node-01 node-01.local
+   192.168.56.12 node-02 node-02.local
+   192.168.56.13 node-03 node-03.local
+   192.168.56.14 node-04 node-04.local
+   192.168.56.15 node-05 node-05.local
+   192.168.56.16 node-06 node-06.local
+   192.168.56.17 node-07 node-07.local
+
+EOF
+exit
+fi
+
+PNODE_HOST="pnode.local"
+SERVER_HOSTS=$(getClusterProperty "vm.hosts" | sed 's/,/ /g')
+LOCATOR_HOSTS=$(getClusterProperty "vm.locator.hosts" | sed 's/,/ /g')
+
+ALL_HOSTS="$PNODE_HOST $SERVER_HOSTS $LOCATOR_HOSTS"
+
+if [ -f /tmp/hosts ]; then
+   rm /tmp/hosts
+fi
+for HOST in $ALL_HOSTS; do
+   HOSTNAME=${HOST%.local}
+   ADDRESS=$(ping -c 1 $HOST | grep PING | sed -e "s/^.*$HOST//" -e 's/).*//' -e 's/^.*(//')
+   echo "$ADDRESS $HOSTNAME $HOST"
+done
+
