@@ -17,7 +17,7 @@ NAME
    $EXECUTABLE - Display cluster views in chronological order
 
 SYNOPSIS
-   ./$EXECUTABLE [-type received | sending ] [-short] [-?]
+   ./$EXECUTABLE [-type received | sending ] [-all] [-locator] [-member] [-short] [-?]
 
 DESRIPTION
    Displays cluster views in chronological order. The cluster views are extracted from the locator logs only.
@@ -26,16 +26,38 @@ OPTIONS
    -type received | sending
              'received" displays received views, 'sending' displays sending views. Default: received
 
+   -locator
+             If specified, then searches the locator log files. If '-member' is also specified then
+             search all log files.
+
+   -member
+             If specified, then searches the member log files. If '-locator' is also specified then
+             search all log files.
+
+   -all
+             If specified, then searches all log files.
+
    -short
              If specified, displays condensed views.
 
 DEFAULT:
-   ./$EXECUTABLE -type received
+   ./$EXECUTABLE -type received -locator
 
 EOF
 exit
 fi
 
+if [ "$LOCATOR_SPECIFIED" == "true" ] && [ "$MEMBER_SPECIFED" == "true" ]; then
+   LOG_FILES="$ALL_FILES"
+elif [ "$ALL_SPECIFIED" == "true" ]; then
+   LOG_FILES="$ALL_FILES"
+elif [ "$LOCATOR_SPECIFIED" == "true" ]; then
+   LOG_FILES="$LOCATOR_FILES"
+elif [ "$MEMBER_SPECIFIED" == "true" ]; then
+   LOG_FILES="$SERVER_FILES"
+else
+   LOG_FILES="$LOCATOR_FILES"
+fi
 
 if [ "$TYPE_ARG" == "sending" ]; then
    FILTER="sending new view"
@@ -50,7 +72,9 @@ if [ -f $TMP_FILE ]; then
    rm $TMP_FILE
 fi
 pushd $APP_LOG_DIR > /dev/null 2>&1
-grep -e "$FILTER" -e "$FILTER2" $LOCATOR_FILES > $TMP_FILE
+grep -e "$FILTER" -e "$FILTER2" $LOG_FILES > $TMP_FILE
+echo ""
+echo "LOG: $LOG_FILES"
 echo ""
 if [ "$TYPE_ARG" == "sending" ]; then
    echo "Sending Views"

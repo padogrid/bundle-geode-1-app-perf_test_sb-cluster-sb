@@ -137,7 +137,7 @@ Inflating the tarballs creates the following directories.
 
 ### 2. Install Geode or GemFire on host OS
 
-:pencil2: In the previous section, we have installed software for the Vagrant VMs. If your host OS is Linux then you can use the same software by specifying the same directories.
+:pencil2: *In the previous section, we have installed software for the Vagrant VMs. If your host OS is Linux then you can use the same software by specifying the same directories.*
 
 By default, PadoGrid installs all the products the `~/Padogrid/product` directory. If you have not installed Geode in that directory, then do so now by running the following commands.
 
@@ -660,7 +660,7 @@ cd_app perf_test_sb/bin_sh
 ./test_group -list
 ```
 
-Looking at Split B server logs, we see they are waiting for other menbers to recover.
+Looking at the Split B server logs, we see they are waiting for other menbers to recover.
 
 ```bash
 show_log -num 3
@@ -681,7 +681,7 @@ Offline members with potentially new data:[
 ]Use the gfsh show missing-disk-stores command to see all disk stores that are being waited on by other members.
 ```
 
-Looking at Split A server logs, we see different messages. They are unable to connect to the locators.
+Looking at the Split A server logs, we see different messages. They are unable to connect to the locators.
 
 ```console
 ...
@@ -705,7 +705,9 @@ Caused by: java.net.UnknownHostException: node-07.local
 2022-07-23 17:57:34 INFO  InternalDistributedSystem:2535 - Disconnecting old DistributedSystem to prepare for a reconnect attempt
 ```
 
-Running `gfsh` shows the members in Split B are inact but we are unable to check persistent status.
+Running `gfsh` shows the members in Split B are inact but we are unable to check the persistent status.
+
+:pencil2: *You won't be able to connect to the cluster (Split B) via `gfsh` until a quorum (Split B) is established. This will take a few minutes. You can run `show_cluster_views` or `show_membership_service_failure` to check the cluster status in the meantime.*
 
 ```bash
 gfsh
@@ -758,6 +760,21 @@ gfsh>describe region --name=/partition_persistent
 ```
 
 The last line above hangs indefinitely. Non-persistent regions are empty. We lost their data. Persistent regions are not empty, however,  which can be verified from Pulse, but they are not accessible.
+
+Running `test_group -list` shows that it is unable to connect to the cluster. Split B is inaccessible.
+
+```bash
+cd_app perf_test_sb/bin_sh
+./test_grup -list
+```
+
+Output:
+
+```console
+...
+Exception in thread "main" org.apache.geode.cache.client.NoAvailableServersException
+...
+```
 
 We now need to decide whether to recover the cluster with only Split B and abandon Split A, or try fixing the network to receover from both Split A dn B. Let's look at both cases.
 
@@ -881,13 +898,11 @@ group: g1
 
 #### Type 1 - Non-Merger
 
-:pencil2: To run this test, you will need to restart the cluster if you have already merged the splits.
+:pencil2: *To run this test, you will need to restart the cluster if you have already merged the splits. Please follow the restart steps shown in the beginning of this test case.*
 
 If we choose not to merge the splits, then you can revoke missing disk stores so that the members in Split B can join the cluster. We would lose data held by the members in Split A, however. The following `gfsh` output shows the outcome of revoking disk stores.
 
-:pencil2: You may not be able to connect via `gfsh` until the cluster has been auto-restarted, which may take a few minutes. You can run `./show_membership_service_failure` to check the restart status.
-
-:pencil2: You may not be able to connect via `gfsh` for older versions of Geode and GemFire. For example, GemFire 9.10.13 returns the HTTP error 404. The following was tested with Geode 1.14.4.
+:pencil2: *You may not be able to connect via `gfsh` until the cluster has been auto-restarted, which may take a few minutes. You can run `./show_membership_service_failure` to check the restart status.*
 
 ```bash
 gfsh
@@ -987,10 +1002,11 @@ Output:
 - We found that the coordinator quickly detects the unreachable members and label them as *suspects*.
 - After 26 seconds, the coordinator logs a possible network partition. It then proceeds to restart the cluster.
 - It took nearly five (5) minutes for Geode/GemFire to resolve the network partition by restarting the entire cluster.
-- With the cluster restarted, there are now only three (3) members as expected. All non-persistent data is lost and clients are unable to connect to the split cluster.
-- Upon merging the network, we saw the network-isolated members (in Split A) automatically rejoin the cluster, but without non-persistent data as expected. 
+- With the cluster restarted, there are now only three (3) members as expected. All non-persistent data is lost and clients are unable to connect to the split cluster (Split B).
+- `gfsh` is able to connect to Split B but partition persisten regions are not accessible. The `describe region` hangs indefinitely on a partition persistent region. It eventually returns when the splits are merged.
+- Upon merging the splits, we saw the network-isolated members (in Split A) automatically rejoin the cluster, but without non-persistent data as expected. 
 - The cluster has completely recovered the persistent data.
-- If we were to reinstate the cluster with the members in the quorum, i.e, Split B members, then we needed to revoke disk stores, which restored the cluster without the data held by the Split A members.
+- If we were to reinstate the cluster only with the members in the quorum, i.e, Split B members, then we needed to revoke disk stores, which restored the cluster without the data held by the Split A members.
 - Merging the splits after we have revoked disk stores did not allow the Split A members to rejoin the cluster. We needed to remove their disk stores before they can rejoin the cluster. We have lost the data held by Split A members in that case.
 
 ---
@@ -1192,7 +1208,7 @@ http://node-07.local:7070/pulse
 
 Looking at the **node-07** log file, we see that the locator recorded that "Region /\_ConfigurationRegion  has potentially stale data" and "it is waiting for another member to recover the latest data." This is a private metadata region maintained by Geode/GemFire internals.
 
-The `missing-disk-stores` command mentioned in the log file is not useful as we are unable to login to the cluster via gfsh. 
+The `missing-disk-stores` command mentioned in the log file is not useful as we are unable to login to the cluster via `gfsh`. 
 
 ```bash
 gfsh
@@ -1243,7 +1259,7 @@ We now attempt to merge the splits.
 ./merge_cluster
 ```
 
-Running `./show_member_join_requests` shows that the **node-07** locator received join requess from all the nodes from Split A.
+Running `./show_member_join_requests` shows that the **node-07** locator received join requests from all the nodes from Split A.
 
 ```console
 Member join requests:
@@ -1359,7 +1375,7 @@ group: g1
 
 ### Type 3
 
-**Quorum without locators.** In this test case, we split the network with a quorm that does not include locators, i.e., Split A with locators and Split B with a qurome but without locators, as shown below.
+**Quorum without locators.** In this test case, we split the network with a quorm that does not include locators, i.e., Split A with locators and Split B with a quorum but without locators, as shown below.
 
 **Split B quorum without locators.**
 
@@ -1440,7 +1456,7 @@ sb-locator-node-07-01.log:[info 2022/07/24 22:39:02.941 UTC sb-locator-node-07-0
     └── 192.168.56.15(sb-node-05:12895)<v2>:41000
 ```
 
-Running `./show_all_suspect_node_pairs` shows that the **node-07** locator is a suspect for all the members in Cluser B (**node-03**, **node-04**, **node-05**), but the **node-6** locator is a suspect for only **node-04** and **node-05**. We would expect both locators are suspects for all the members in Split B. With this discrepency, we cannot conclusively determine the network partition state.
+Running `./show_all_suspect_node_pairs` shows that the **node-07** locator is a suspect for all the members in Split B (**node-03**, **node-04**, **node-05**), but the **node-06** locator is a suspect for only **node-04** and **node-05**. **node-03** is not registered as a suspect. With this discrepency, we cannot conclusively determine the network partition state.
 
 ```bash
 ./show_all_suspect_node_pairs
@@ -1507,7 +1523,7 @@ sb-node-05.log:2022-07-24 22:43:22 INFO  Services:1196 - received suspect messag
 sb-node-05.log:2022-07-24 22:43:25 INFO  Services:1196 - received suspect message from 192.168.56.17(sb-locator-node-07-01:16262:locator)<ec><v1>:41000 for 192.168.56.14(sb-node-04:12920)<v2>:41000: Member isn't responding to heartbeat requests
 ```
 
-Running `show_membership_service_failure` clearly shows the state of the cluster. The **node-06** locator coordinator has declared a network partition with the Split B members listed. 
+Running `show_membership_service_failure` clearly shows the state of the cluster. The **node-06** locator coordinator has declared a network partition with the Split B members listed. Unlike `show_all_suspect_node_pairs`, it accurately determined all the unreachable members. The `show_all_suspect_node_pairs` discrepency is due to the incomplete log messages extracted from each member's log file.
 
 ```bash
 ./show_membership_service_failure
@@ -1568,8 +1584,14 @@ We now attempt to merge the splits.
 
 After a few minutes, running `show_membership_service_failure` shows the locators are not able to recover the cluster.
 
-Looking at the **node-07** locator log, it is trying to establish a quorum but fails because the sum of the four (4) responding members is only 26 which is less than the quorom threadhold of 31. Unfortunately, the log does not reveal the reponding member names. We can guest they are 2 members and 2 locators (2\*10+2\*3=26). They should be the members in Split A which includes **node-01** as the lead having the weight of 15. 
-However, the `show_cluster_views` ouput above shows that the lead has been changed to **node-03**. This seems to explain why the quorum is less than 26.
+Looking at the **node-07** locator log, it is trying to establish a quorum but fails because the sum of the four (4) responding members is only 26 which is less than the quorum threadhold of 31. Unfortunately, the log does not reveal the reponding member names. We can guest they are 2 members and 2 locators (2\*10+2\*3=26). They should be the members in Split A which includes **node-01** as the lead having the weight of 15. However, the `show_cluster_views` ouput above shows that the lead has been changed to **node-03**. This seems to explain why the quorum is less than 26.
+
+```bash
+# View node-07 locator log
+show_log -log locator -num 2
+```
+
+Output:
 
 ```console
 ...
@@ -1583,7 +1605,7 @@ However, the `show_cluster_views` ouput above shows that the lead has been chang
 
 We can try to add a new node to the cluster to increase the total weight, but the locators will refuse connection.
 
-We have no way of restarting the cluster. It is stuck in a quorem check loop.
+We have no way of restarting the cluster. It is stuck in a quorem check loop indefinitely.
 
 #### Type 3 Summary
 
@@ -1732,7 +1754,7 @@ sb-node-05.log:2022-07-28 10:42:15 INFO  Services:1196 - received suspect messag
 sb-node-05.log:2022-07-28 10:42:18 INFO  Services:1196 - received suspect message from 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000 for 192.168.56.14(sb-node-04:13234)<v2>:41000: Member isn't responding to heartbeat requests
 ```
 
-Running `show_cluster_views` shows that initially, both locators (**node-06** and **node-07**) can only see themselves but at `10:38:11`, both recorded a complete view of all the data nodes. We also see after 5:31 minutes, at `10:42:31.423`, there are four (4) data nodes failed to respond to the view change, but we are expecting all five (5) data nodes failed to repond. The cluster views do not represent the current state of the cluster. We need to investigate the log files further.
+Running `show_cluster_views` shows that initially, both locators (**node-06** and **node-07**) can only see themselves but at `10:38:11`, both recorded a complete view of all the data nodes. We also see after 5:31 minutes, at `10:42:31.423`, there are four (4) data nodes failed to respond to the view change. We are expecting all five (5) data nodes to fail to repond, however. The cluster views do not represent the current state of the cluster. We need to investigate the log files further.
 
 ```bash
 ./show_cluster_views
@@ -1820,6 +1842,13 @@ We now attempt to merge the splits.
 ```
 
 The **node-06** locator log files show that both locators are sending "quorum check" requests to all the members, but none of them are responding as shown below. It is able to contact two (2) members at `10:56:17.606` with a total weight of 6 indicating that they are locators. Each locator has the weight of 3. The **node-06** locator continously try to contact the data nodes but fail to get responses and therefore the cluster cannot be reinstated.
+
+```bash
+# View node-06 locator log
+show_log -log locator
+```
+
+Output:
 
 ```console
 ...
@@ -2274,7 +2303,7 @@ In the mean time, Pulse continues to see all the members as if nothing happened.
 #### Type 5 Summary
 
 - This test case split the network to isolate only members. The locators are reachable from all members.
-- We saw Pulse behaved as if nothing happened. It continues to show all the members are inact.
+- We saw Pulse behaves as if nothing happened. It continues to show that all the members are inact and normal.
 - We saw nothing in the log files indicate there is a network partition.
 - We then used `gfsh` to execute a `describe region` command, which blocked indefinitely.
 - All member log files show that one (1) thread is stuck. The locator also recorded that it is waiting for replies from all members.
@@ -2282,7 +2311,7 @@ In the mean time, Pulse continues to see all the members as if nothing happened.
 - A few seconds later, `gfsh` finally returned with results. The member log files also recorded replies and the stuck thread is no longer in sight. The locator log file showed the replies are complete.
 - The cluster continues to run without any issues. All data is recovered.
 - In this test case, we found that GemFire solely relies on locators to detect network partitions. If members split but the locators are still reachable by all members then GemFire never declares a network partition. Only when a client performs GemFire operations, we are able to see warning messages."
-- Troubleshooting Tip: Look for "stuck thread" warning messages and hanging clients.
+- **Troubleshooting Tip:** Look for "stuck thread" warning messages and hanging clients.
 
 ---
 
@@ -2324,7 +2353,7 @@ We can use the [Test Results](#test-results) to create a prognosis for each netw
 | ------------------------------------------------------ | ------ | ------ | ------ | ------ | ------- | 
 | Persistent data recoverable?                           | yes    | yes    | no     | no     | yes     |
 | Non-persistent data recoverable?                       | no     | no     | no     | no     | yes     |
-| Cluster auto-restart upon resolving network issue?     | yes    | yes    | no     | no     | yes     |
+| Cluster auto-restart upon resolving network issues?    | yes    | yes    | no     | no     | yes     |
 | Will GemFire declare a network partition?              | yes    | yes    | yes    | yes    | no      |
 | Will cluster quorum determine properly?                | yes    | yes    | no     | no     | no      |
 | Clients able to connect during network partition?      | no     | no     | no     | no     | no      |
