@@ -18,9 +18,10 @@ This bundle provides scripts, configuration files, and apps for creating a Geode
   - [4. Build pod](#4-build-pod)
 - [Startup Sequence](#startup-sequence)
   - [1. Install `ntpd` to synchronize clocks](#1-install-ntpd-to-synchronize-clocks)
-  - [2. Start Cluster](#2-start-cluster)
-  - [3. Monitor Pulse](#3-monitor-pulse)
-  - [4. Ingest data - `perf_test_sb`](#4-ingest-data---perf_test_sb)
+  - [2. Update `/etc/hosts`](#2-update-etchosts)
+  - [3. Start Cluster](#3-start-cluster)
+  - [4. Monitor Pulse](#4-monitor-pulse)
+  - [5. Ingest data - `perf_test_sb`](#5-ingest-data---perf_test_sb)
 - [Network Partition Types](#network-partition-types)
 - [Test Cases](#test-cases)
   - [Type 1](#type-1)
@@ -103,7 +104,7 @@ This bundle includes the following components.
 We will be taking the following steps as we setup and run the environment.
 
 1. Install Linux products
-2. Create VM-enabled workspace
+2. Install Geode or GemFire on host OS
 3. Create pod
 4. Build pod
 
