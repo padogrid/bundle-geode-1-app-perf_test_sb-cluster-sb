@@ -40,4 +40,4 @@ for i in $ALL_HOSTS; do
    ssh -q -n $i "sudo iptables -F INPUT"
 done
 
-echo "Splits  merged."
+echo "Splits merged."

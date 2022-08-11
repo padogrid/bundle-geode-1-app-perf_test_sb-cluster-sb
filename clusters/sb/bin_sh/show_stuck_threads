@@ -49,9 +49,9 @@ while IFS= read -r line; do
    if [ "$prev_log_file" != "" ] && [ "$log_file" != "$prev_log_file" ]; then
       if [ "$replies_completed" != "" ]; then
          echo "$log_file"
-         echo "$TTee First: $first_stuck"
-         echo "$TTee Last:  $last_stuck"
-         echo "$TLel Reply: $replies_completed"
+         echo "$TTee first: $first_stuck"
+         echo "$TTee  last:  $last_stuck"
+         echo "$TLel reply: $replies_completed"
          first_stuck=""
          last_stuck=""
          replies_completed=""
@@ -68,9 +68,9 @@ while IFS= read -r line; do
       fi
       if [ "$replies_completed" != "" ]; then
          echo "$log_file"
-         echo "$TTee First: $first_stuck"
-         echo "$TTee Last:  $last_stuck"
-         echo "$TLel Reply: $replies_completed"
+         echo "$TTee first: $first_stuck"
+         echo "$TTee  last:  $last_stuck"
+         echo "$TLel reply: $replies_completed"
          first_stuck=""
          last_stuck=""
          replies_completed=""
@@ -82,9 +82,9 @@ unset IFS
 
 if [ "$first_stuck" != "" ]; then
    echo "Stuck thread(s)"
-   echo "$TTee First: $first_stuck"
-   echo "$TTee Last:  $last_stuck"
-   echo "$TLel Reply: $replies_completed"
+   echo "$TTee first: $first_stuck"
+   echo "$TTee  last:  $last_stuck"
+   echo "$TLel reply: $replies_completed"
 fi
 
 rm $TMP_FILE

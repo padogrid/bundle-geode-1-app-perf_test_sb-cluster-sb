@@ -17,7 +17,7 @@ NAME
    $EXECUTABLE - Find the specified suspect node from all log files
 
 SYNOPSIS
-   ./$EXECUTABLE [suspect_node] [-short] [-?]
+   ./$EXECUTABLE [suspect_node] [-long] [-?]
 
 DESRIPTION
    Finds the specified suspect node from all log files
@@ -26,8 +26,8 @@ OPTIONS
    suspect_node
              Optional suspect node. If unspecified, then assigns all nodes as suspects.
 
-   -short
-             If specified, displays condensed lines
+   -long
+             If specified, displays unfiltered log messages
 
 DEFAULT:
    ./$EXECUTABLE
@@ -36,14 +36,14 @@ EOF
 exit
 fi
 
-if [ "$1" == "-short" ]; then
+if [ "$1" == "-long" ]; then
    SUSPECT_NODES="$2"
 else
    SUSPECT_NODES=""
 fi
 
 if [ "$SUSPECT_NODES" = "" ]; then
-   SUSPECT_NODES="$ALL_NODES"
+   SUSPECT_NODES="$ALL_NODES myself"
 fi
 
 TIMESTAMP=`date +%y%m%d-%H%M%S`
@@ -85,7 +85,7 @@ for SUSPECT_NODE in $SUSPECT_NODES; do
      unset IFS
      if [ -f "$TMP_FILE2" ]; then
         cat $TMP_FILE2 | awk '!a[$0]++' | sort  > $TMP_FILE3
-        if [ "$SHORT" == "true" ]; then
+        if [ "$LONG" != "true" ]; then
            size=$(cat $TMP_FILE2 | wc -l)
            count=0
            while IFS= read -r line; do
@@ -106,8 +106,8 @@ for SUSPECT_NODE in $SUSPECT_NODES; do
 
      echo ""
      echo "First logged:"
-     sort $TMP_FILE_FIRST | awk '!a[$0]++' > $TMP_FILE_FIRST
-     if [ "$SHORT" == "true" ]; then
+     sort $TMP_FILE_FIRST | awk '!a[$0]++' > $TMP_FILE3
+     if [ "$LONG" != "true" ]; then
         while IFS= read -r line; do
           log_file=$(echo $line | sed 's/:.*$//')
           timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER-.*$//"  -e 's/info.*//i')
@@ -116,20 +116,22 @@ for SUSPECT_NODE in $SUSPECT_NODES; do
           for=$(echo $for_before | sed -e 's/: .*$//');
           message=$(echo $for_before | sed -e 's/^.*: //');
           echo "$timestamp"
+          echo "$TTee  log: $log_file"
           echo "$TTee from: $from"
-          echo "$TTee for: $for"
-          echo "$TLel $message"
-        done < "$TMP_FILE_FIRST"
+          echo "$TTee  for: $for"
+          echo "$TLel  msg: $message"
+        done < "$TMP_FILE3"
         unset IFS
      else
-        cat $TMP_FILE_FIRST
+        cat $TMP_FILE3
      fi
      rm $TMP_FILE_FIRST
+     rm $TMP_FILE3
 
      echo ""
      echo "Last logged:"
-     sort $TMP_FILE | awk '!a[$0]++' > $TMP_FILE
-     if [ "$SHORT" == "true" ]; then
+     sort $TMP_FILE | awk '!a[$0]++' > $TMP_FILE3
+     if [ "$LONG" != "true" ]; then
         while IFS= read -r line; do
           log_file=$(echo $line | sed 's/:.*$//')
           timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER-.*$//"  -e 's/info.*//i')
@@ -138,15 +140,17 @@ for SUSPECT_NODE in $SUSPECT_NODES; do
           for=$(echo $for_before | sed -e 's/: .*$//');
           message=$(echo $for_before | sed -e 's/^.*: //');
           echo "$timestamp"
+          echo "$TTee  log: $log_file"
           echo "$TTee from: $from"
-          echo "$TTee for: $for"
-          echo "$TLel $message"
-        done < "$TMP_FILE"
+          echo "$TTee  for: $for"
+          echo "$TLel  msg: $message"
+        done < "$TMP_FILE3"
         unset IFS
      else
-        cat $TMP_FILE
+        cat $TMP_FILE3
      fi
      rm $TMP_FILE
+     rm $TMP_FILE3
    fi
    echo ""
 done

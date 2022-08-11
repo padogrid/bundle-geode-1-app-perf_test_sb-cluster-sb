@@ -16,45 +16,51 @@ NAME
    $EXECUTABLE - Split the cluster $CLUSTER into two (2)
 
 SYNOPSIS
-   ./$EXECUTABLE -type 1|2|3|4|5 [interface] [-?]
+   ./$EXECUTABLE -type 0|1|2|3|4|5 [interface] [-?]
 
 DESRIPTION
    Splits the cluster $CLUSTER into two (2) by applying iptables rules.
 
 OPTIONS
-   -type 1|2|3|4|5
+   -type 0|1|2|3|4|5
             Network split type as shown below.
 
+            Type 0: Split A with one (1) node
+            | Split | Weight   | VM Hosts                                                        |
+            | ----- | -------- | --------------------------------------------------------------- |
+            | A     | 15 (25%) | node-01 (lead)                                                  |
+            | B     | 46 (75%) | node-02, node-03, node-04, node-05, node-06, node-07 (locators) |
+
             Type 1: Split A without locators
-            | Split | Weight   | VM Hosts                                               |
-            | ----- | -------- | ------------------------------------------------------ |
-            | A     | 25 (41%) | node-01 (lead), node-02                                |
-            | B     | 36 (59%) | node-03, node-04, node-05, node-06, node-07 (locators) |
+            | Split | Weight   | VM Hosts                                                        |
+            | ----- | -------- | --------------------------------------------------------------- |
+            | A     | 25 (41%) | node-01 (lead), node-02                                         |
+            | B     | 36 (59%) | node-03, node-04, node-05, node-06, node-07 (locators)          |
 
             Type 2: Split A and B each with a locator
-            | Split  | Weight   | VM Hosts                                               |
-            | ------ | -------- | ------------------------------------------------------ |
-            | A      | 28 (46%) | node-01 (lead), node-02, node-06 (locator)             |
-            | B      | 33 (54%) | node-03, node-04, node-05, node-07 (locator)           |
+            | Split  | Weight   | VM Hosts                                                        |
+            | ------ | -------- | --------------------------------------------------------------- |
+            | A      | 28 (46%) | node-01 (lead), node-02, node-06 (locator)                      |
+            | B      | 33 (54%) | node-03, node-04, node-05, node-07 (locator)                    |
 
             Type 3: Split B quorum without locators
-            | Split | Weight   | VM Hosts                                               |
-            | ----- | -------- | ------------------------------------------------------ |
-            | A     | 26 (43%) | node-01, node-02, node-06, node-07 (locators)          |
-            | B     | 35 (57%) | node-03 (lead), node-04, node-05                       |
+            | Split | Weight   | VM Hosts                                                        |
+            | ----- | -------- | --------------------------------------------------------------- |
+            | A     | 26 (43%) | node-01, node-02, node-06, node-07 (locators)                   |
+            | B     | 35 (57%) | node-03 (lead), node-04, node-05                                |
 
             Type 4: Split A with locators but without data nodes
-            | Split | Weight   | VM Hosts                                               |
-            | ----- | -------- | ------------------------------------------------------ |
-            | A     | 6 (10%)  | node-06, node-07 (locators)                            |
-            | B     | 55 (90%) | node-01 (lead), node-02, node-03, node-04, node-05     |
+            | Split | Weight   | VM Hosts                                                        |
+            | ----- | -------- | --------------------------------------------------------------- |
+            | A     | 6 (10%)  | node-06, node-07 (locators)                                     |
+            | B     | 55 (90%) | node-01 (lead), node-02, node-03, node-04, node-05              |
 
 
             Type 5: Split A and B with both locators
-            | Split | Weight   | VM Hosts                                               |
-            | ----- | -------- | ------------------------------------------------------ |
-            | A     | 31 (51%) | node-01 (lead), node-02, node-06, node-07 (locators)   |
-            | B     | 36 (59%) | node-03, node-04, node-05, node-06, node-07 (locators) |
+            | Split | Weight   | VM Hosts                                                        |
+            | ----- | -------- | --------------------------------------------------------------- |
+            | A     | 31 (51%) | node-01 (lead), node-02, node-06, node-07 (locators)            |
+            | B     | 36 (59%) | node-03, node-04, node-05, node-06, node-07 (locators)          |
 
    interface
              Network interface. Run 'ifconfig' or 'ip addr' to determine the network interface
@@ -87,6 +93,20 @@ echo "Interface: ${INTERFACE}"
 echo ""
 
 case "$TYPE_ARG" in
+
+0)
+
+for i in $(seq 2 7); do
+   ssh -q -n node-0$i.local "sudo iptables -A INPUT -i ${INTERFACE} -s node-01.local -j DROP;"
+done
+
+cat <<EOF
+| Split | Weight   | VM Hosts                                                        |
+| ----- | -------- | --------------------------------------------------------------- |
+| A     | 15 (25%) | node-01 (lead)                                                  |
+| B     | 46 (75%) | node-02, node-03, node-04, node-05, node-06, node-07 (locators) |
+EOF
+;;
 
 1)
 

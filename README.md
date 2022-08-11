@@ -22,8 +22,14 @@ This bundle provides scripts, configuration files, and apps for creating a Geode
   - [3. Start Cluster](#3-start-cluster)
   - [4. Monitor Pulse](#4-monitor-pulse)
   - [5. Ingest data - `perf_test_sb`](#5-ingest-data---perf_test_sb)
-- [Network Partition Types](#network-partition-types)
+- [Network Partition](#network-partition)
+  - [GemFire Documentation](#gemfire-documentation)
+  - [GemFire Network Partition Types](#gemfire-network-partition-types)
+  - [Scripts](#scripts)
 - [Test Cases](#test-cases)
+  - [Type 0](#type-0)
+    - [Type 0 - Merger](#type-0---merger)
+    - [Type 0 Summary](#type-0-summary)
   - [Type 1](#type-1)
     - [Type 1 - Merger](#type-1---merger)
     - [Type 1 - Non-Merger](#type-1---non-merger)
@@ -61,6 +67,7 @@ install_bundle -download bundle-geode-1-app-perf_test_sb-cluster-sb
 
 To prepare for encountering cluster split-brain situations, this use case provides step-by-step instructions for creating and diagnosing five (5) types of network parition covering all possibilities.
 
+- [Type 0: Single data node isolated, locators unreachable.](#type-0)
 - [Type 1: Data nodes isolated, locators unreachable.](#type-1)
 - [Type 2: Locators divided.](#type-2)
 - [Type 3: Quorum without locators.](#type-3)
@@ -266,9 +273,9 @@ Edit `/etc/hosts`:
 From `pnode.local`, start the `sb` cluster as follows:
 
 ```console
-# To make sure node-01 gets selected as the lead member, run 'start_cluster_lead' in 'bin_sh/'
+# To make sure node-01 gets selected as the lead member, run 'start_cluster_lead_1' in 'bin_sh/'
 switch_cluster sb/bin_sh
-./start_cluster_lead
+./start_cluster_lead_1
 
 # Verify 2 locators and 5 members running
 show_cluster
@@ -338,7 +345,9 @@ group: g1
 ...
 ```
 
-## Network Partition Types
+## Network Partition
+
+### GemFire Documentation
 
 We closely follow the guidelines in the GemFire documentation on Network Partition.
 
@@ -347,22 +356,71 @@ We closely follow the guidelines in the GemFire documentation on Network Partiti
 - [Membership Coordinators, Lead Members and Member Weighting](https://docs.vmware.com/en/VMware-Tanzu-GemFire/9.15/tgf/GUID-managing-network_partitioning-membership_coordinators_lead_members_and_weighting.html)
 - [Log Messages and Solutions](https://docs.vmware.com/en/VMware-Tanzu-GemFire/9.15/tgf/GUID-managing-troubleshooting-log_messages_and_solutions.html?hWord=N4IghgNiBcIM4BcCuBjA1gAgQCwE4FMwATEAXyA)
 
-We carry out five (5) network partition scenarios using the included scripts. We refer each scenario by type so that we can quickly identify them. For each type, we split the network into two (2) and refer them as Split A and Split B.
+### GemFire Network Partition Types
+
+We carry out six (6) network partition scenarios using the included scripts. We refer each scenario by type so that we can quickly identify them. For each type, we split the network into two (2) and refer them as Split A and Split B.
+
+**Type 0: Split A with one (1) node**
+
+| Split | Weight   | VM Hosts                                                        |
+| ----- | -------- | --------------------------------------------------------------- |
+| A     | 15 (25%) | node-01 (lead)                                                  |
+| B     | 46 (75%) | node-02, node-03, node-04, node-05, node-06, node-07 (locators) |
+
+**Type 1: Split A without locators**
+
+| Split | Weight   | VM Hosts                                                        |
+| ----- | -------- | --------------------------------------------------------------- |
+| A     | 25 (41%) | node-01 (lead), node-02                                         |
+| B     | 36 (59%) | node-03, node-04, node-05, node-06, node-07 (locators)          |
+
+**Type 2: Split A and B each with a locator**
+
+| Split  | Weight   | VM Hosts                                                        |
+| ------ | -------- | --------------------------------------------------------------- |
+| A      | 28 (46%) | node-01 (lead), node-02, node-06 (locator)                      |
+| B      | 33 (54%) | node-03, node-04, node-05, node-07 (locator)                    |
+
+**Type 3: Split B quorum without locators**
+
+| Split | Weight   | VM Hosts                                                        |
+| ----- | -------- | --------------------------------------------------------------- |
+| A     | 26 (43%) | node-01, node-02, node-06, node-07 (locators)                   |
+| B     | 35 (57%) | node-03 (lead), node-04, node-05                                |
+
+**Type 4: Split A with locators but without data nodes**
+
+| Split | Weight   | VM Hosts                                                        |
+| ----- | -------- | --------------------------------------------------------------- |
+| A     | 6 (10%)  | node-06, node-07 (locators)                                     |
+| B     | 55 (90%) | node-01 (lead), node-02, node-03, node-04, node-05              |
+
+
+**Type 5: Split A and B with both locators**
+
+| Split | Weight   | VM Hosts                                                        |
+| ----- | -------- | --------------------------------------------------------------- |
+| A     | 31 (51%) | node-01 (lead), node-02, node-06, node-07 (locators)            |
+| B     | 36 (59%) | node-03, node-04, node-05, node-06, node-07 (locators)          |
+
+### Regions
 
 Before we split the network, we ingest data into eight (8) regions by running `test_group` as shown blow.
 
-| Region                             | Data Policy (refid)           |
-| ---------------------------------- | ----------------------------- |
-| partition                          | PARTITION                     |
-| partition_overflow                 | PARTITION_OVERFLOW            |
-| partition_persistent               | PARTITION_PERSISTENT          |
-| partition_persistent_overflow      | PARTITION_PERSISTENT_OVERFLOW |
-| replicate                          | REPLICATE                     |
-| replicate_overflow                 | REPLICATE_OVERFLOW            |
-| replicate_persistent               | REPLICATE_PERSISTENT          |
-| replicate_persistent_overflow      | REPLICATE_PERSISTENT_OVERFLOW |
+| Region                             | Data Policy (refid)                     |
+| ---------------------------------- | --------------------------------------- |
+| partition                          | PARTITION_REDUNDANT                     |
+| partition_overflow                 | PARTITION_REDUNDANT_OVERFLOW            |
+| partition_persistent               | PARTITION_REDUNDANT_PERSISTENT          |
+| partition_persistent_overflow      | PARTITION_REDUNDANT_PERSISTENT_OVERFLOW |
+| replicate                          | REPLICATE                               |
+| replicate_overflow                 | REPLICATE_OVERFLOW                      |
+| replicate_persistent               | REPLICATE_PERSISTENT                    |
+| replicate_persistent_overflow      | REPLICATE_PERSISTENT_OVERFLOW           |
 
 We expect persistent regions to recover data and non-persistent regions to lose data upon network recovery.
+
+### Scripts
 
 All test cases must be conducted on `pnode.local`. Login to `pnode.local` and switch cluster as follows.
 
@@ -392,6 +450,8 @@ The `sb/bin_sh` folder also contains log scraping scripts as follows. These scri
 | show_cluster_views                     | Display cluster views in chronological order                                 |
 | show_member_join_requests              | Display member join requests received by the locators in chronological order |
 | show_membership_service_failure        | Display membership service failure and restarted messages from locators      |
+| show_missing_disk_stores               | Display missing disk stores                                                  |
+| show_offline_members                   | Display offline regions per member                                           |
 | show_stuck_threads                     | Find stuck threads                                                           |
 | show_suspect_node_pair                 | Find the specified suspect node pair from the log files                      |
 
@@ -454,6 +514,404 @@ We are now ready to conduct split-brain tests. The subsequent section presents a
 
 ## Test Cases
 
+### Type 0
+
+**Single data node isloated, locators unreachable.** In this test case, we split the network with a single data node unreachable by locators. i.e., Split A with a single data node and Split B with locators, as shown below. 
+
+Technically, this type does not represent a split-brain scenario. Since we have configured Geode/GemFire to store two (2) copies of data, if a single data node fails, Geode/GemFire will simply continue to serve the backup copy of data as if nothing happened. Nontheless, we include this type for completeness.
+
+:pencil2: Note that if we have configured Geode/GemFire with a single copy of data, then a single data node failure leads to Type 1.
+
+| Split | Weight   | VM Hosts                                                        |
+| ----- | -------- | --------------------------------------------------------------- |
+| A     | 15 (25%) | node-01 (lead)                                                  |
+| B     | 46 (75%) | node-02, node-03, node-04, node-05, node-06, node-07 (locators) |
+
+![Split-Brain Type 0](images/split-brain-Type-0.drawio.png)
+
+Restart the cluster and ingest data.
+
+```bash
+# Kill the cluster and clean all log and persistent files
+kill_cluster -all
+clean_cluster -all
+
+# To make sure node-01 gets selected as the lead member, run 'start_cluster_lead_1' in 'bin_sh/'
+cd_cluster sb/bin_sh
+./start_cluster_lead_1
+
+# Once the cluster is up, ingest data.
+cd_app perf_test_sb/bin_sh
+./test_group -run
+
+# Check the entry count in each region we just ingested
+./test_group -list
+```
+
+From `pnode.local`, run `split_cluster` as follows:
+
+```console
+switch_cluster sb/bin_sh
+./split_cluster -type 1
+```
+
+Running `show_membership_service_failure` shows no failures.
+
+```bash
+./show_membership_service_failure
+```
+
+```console
+Member service failure
+----------------------
+Now: 2022/08/11 16:41:20 UTC
+```
+
+Running `show_cluster_views` shows **node-01** has crashed.
+
+```bash
+./show_cluster_views
+```
+
+Ouptput:
+
+```console
+Received Views
+--------------
+sb-locator-node-06.log: 2022/08/11 16:33:24.444 UTC
+└── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000|0
+    ├── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000
+sb-locator-node-06.log: 2022/08/11 16:33:24.774 UTC
+└── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000|1
+    ├── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:14864:locator)<ec><v1>:41000
+sb-locator-node-06.log: 2022/08/11 16:34:41.478 UTC
+└── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000|2
+    ├── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:14864:locator)<ec><v1>:41000
+    ├── 192.168.56.11(sb-node-01:14786)<v2>:41000{lead}
+    ├── 192.168.56.14(sb-node-04:8813)<v2>:41000
+    ├── 192.168.56.13(sb-node-03:9180)<v2>:41000
+    ├── 192.168.56.15(sb-node-05:9652)<v2>:41000
+    ├── 192.168.56.12(sb-node-02:10403)<v2>:41000
+sb-locator-node-06.log: 2022/08/11 16:37:43.901 UTC
+└── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000|3
+    ├── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:14864:locator)<ec><v1>:41000
+    ├── 192.168.56.14(sb-node-04:8813)<v2>:41000{lead}
+    ├── 192.168.56.13(sb-node-03:9180)<v2>:41000
+    ├── 192.168.56.15(sb-node-05:9652)<v2>:41000
+    ├── 192.168.56.12(sb-node-02:10403)<v2>:41000
+    crashed:
+    ├── 192.168.56.11(sb-node-01:14786)<v2>:41000
+sb-locator-node-07.log: 2022/08/11 16:33:24.805 UTC
+└── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000|1
+    ├── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:14864:locator)<ec><v1>:41000
+sb-locator-node-07.log: 2022/08/11 16:34:41.510 UTC
+└── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000|2
+    ├── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:14864:locator)<ec><v1>:41000
+    ├── 192.168.56.11(sb-node-01:14786)<v2>:41000{lead}
+    ├── 192.168.56.14(sb-node-04:8813)<v2>:41000
+    ├── 192.168.56.13(sb-node-03:9180)<v2>:41000
+    ├── 192.168.56.15(sb-node-05:9652)<v2>:41000
+    ├── 192.168.56.12(sb-node-02:10403)<v2>:41000
+sb-locator-node-07.log: 2022/08/11 16:37:43.924 UTC
+└── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000|3
+    ├── 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:14864:locator)<ec><v1>:41000
+    ├── 192.168.56.14(sb-node-04:8813)<v2>:41000{lead}
+    ├── 192.168.56.13(sb-node-03:9180)<v2>:41000
+    ├── 192.168.56.15(sb-node-05:9652)<v2>:41000
+    ├── 192.168.56.12(sb-node-02:10403)<v2>:41000
+    crashed:
+    ├── 192.168.56.11(sb-node-01:14786)<v2>:41000
+Now: 2022/08/11 16:40:40 UTC
+```
+
+Running `show_all_suspect_node_pairs` shows **node-07** is a suspect for **node-01**. We know from the previous step, **node-01** has crashed.
+
+```bash
+./show_all_suspect_node_pairs
+```
+
+```console
+Suspect: node-01
+---------------------------------------
+Not found.
+
+Suspect: node-02
+---------------------------------------
+Not found.
+
+Suspect: node-03
+---------------------------------------
+Not found.
+
+Suspect: node-04
+---------------------------------------
+Not found.
+
+Suspect: node-05
+---------------------------------------
+Not found.
+
+Suspect: node-06
+---------------------------------------
+Not found.
+
+Suspect: node-07
+---------------------------------------
+For:
+└── 192.168.56.11(sb-node-01:14786)
+
+First logged:
+2022/08/11 16:37:38.587 UTC
+├──  log: sb-locator-node-06.log
+├── from: 192.168.56.17(sb-locator-node-07:14864:locator)<ec><v1>:41000
+├──  for: 192.168.56.11(sb-node-01:14786)<v2>:41000
+└──  msg: Member isn't responding to heartbeat requests
+
+Last logged:
+2022-08-11 16:37:38
+├──  log: sb-node-05.log
+├── from: 192.168.56.17(sb-locator-node-07:14864:locator)<ec><v1>:41000
+├──  for: 192.168.56.11(sb-node-01:14786)<v2>:41000
+└──  msg: Member isn't responding to heartbeat requests
+
+Suspect: myself
+---------------------------------------
+For:
+└── 192.168.56.11(sb-node-01:14786)
+
+First logged:
+2022/08/11 16:37:38.602 UTC
+├──  log: sb-locator-node-07.log
+├── from: myself
+├──  for: 192.168.56.11(sb-node-01:14786)<v2>:41000
+└──  msg: Member isn't responding to heartbeat requests
+
+Last logged:
+2022/08/11 16:37:38.602 UTC
+├──  log: sb-locator-node-07.log
+├── from: myself
+├──  for: 192.168.56.11(sb-node-01:14786)<v2>:41000
+└──  msg: Member isn't responding to heartbeat requests
+
+Now: 2022/08/11 16:42:09 UTC
+```
+
+```bash
+./show_all_unexpectedly_left_members
+```
+
+Output:
+
+```console
+Member unexpectedly left:
+-------------------------
+sb-locator-node-06.log
+├── 2022/08/11 16:37:43.908 UTC
+│   └──  192.168.56.11(sb-node-01:14786)<v2>:41000
+sb-locator-node-07.log
+├── 2022/08/11 16:37:43.934 UTC
+│   └──  192.168.56.11(sb-node-01:14786)<v2>:41000
+sb-node-02.log
+├── 2022-08-11 16:37:43
+│   └──  192.168.56.11(sb-node-01:14786)<v2>:41000
+sb-node-03.log
+├── 2022-08-11 16:37:43
+│   └──  192.168.56.11(sb-node-01:14786)<v2>:41000
+sb-node-04.log
+├── 2022-08-11 16:37:43
+│   └──  192.168.56.11(sb-node-01:14786)<v2>:41000
+sb-node-05.log
+├── 2022-08-11 16:37:43
+│   └──  192.168.56.11(sb-node-01:14786)<v2>:41000
+Now: 2022/08/11 16:43:50 UTC
+```
+
+Running `test_group -list` shows all the regions have the correct entry counts.
+
+```bash
+cd_app perf_test_sb/bin_sh
+./test_group -list
+```
+
+```console
+...
+group: g1
+  - name: partition_persistent_overflow
+    data: Region
+    size: 10000
+    cleared: false
+  - name: replicate_overflow
+    data: Region
+    size: 10000
+    cleared: false
+  - name: partition_persistent
+    data: Region
+    size: 10000
+    cleared: false
+  - name: partition
+    data: Region
+    size: 10000
+    cleared: false
+  - name: partition_overflow
+    data: Region
+    size: 10000
+    cleared: false
+  - name: replicate_persistent_overflow
+    data: Region
+    size: 10000
+    cleared: false
+  - name: replicate
+    data: Region
+    size: 10000
+    cleared: false
+  - name: replicate_persistent
+    data: Region
+    size: 10000
+    cleared: false
+...
+```
+
+#### Type 0 - Merger
+
+Let's now merge Split A and Split B by running `merge_cluster`.
+
+```bash
+./merge_cluster
+```
+
+Running `./show_member_join_requests` does not show a join request from **node-01**.
+
+```bash
+./show_member_join_requests
+```
+
+Output:
+
+```console
+Member join requests:
+---------------------
+sb-locator-node-06.log
+├── 2022/08/11 16:33:23.671 UTC
+│   └── 192.168.56.17(sb-locator-node-07:14864:locator)<ec>:41000
+├── 2022/08/11 16:34:41.170 UTC
+│   └── 192.168.56.11(sb-node-01:14786):41000
+├── 2022/08/11 16:34:41.175 UTC
+│   └── 192.168.56.14(sb-node-04:8813):41000
+├── 2022/08/11 16:34:41.199 UTC
+│   └── 192.168.56.13(sb-node-03:9180):41000
+├── 2022/08/11 16:34:41.218 UTC
+│   └── 192.168.56.15(sb-node-05:9652):41000
+├── 2022/08/11 16:34:41.234 UTC
+│   └── 192.168.56.12(sb-node-02:10403):41000
+Now: 2022/08/11 16:42:53 UTC
+```
+
+We now check the **node-01** log file for its status. It is repeatedly sending join requests but it is not receving responses. You can also look at the locator log files to see if they are logging **node-01** join requests but you will find nothing pertaining to **node-01** requests.
+
+```bash
+show_log -num 1
+```
+
+Output:
+
+```console
+...
+2022-08-11 16:47:44 INFO  Services:330 - Discovery state after looking for membership coordinator is locatorsContacted=2; findInViewResponses=0; alreadyTried=[192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000]; registrants=[192.168.56.11(sb-node-01:14786):41000, 192.168.56.11(sb-node-01:14786):41000, 192.168.56.11(sb-node-01:14786):41000, 192.168.56.11(sb-node-01:14786):41000, 192.168.56.11(sb-node-01:14786):41000]; possibleCoordinator=192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000; viewId=3; hasContactedAJoinedLocator=true; view=View[192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000|3] members: [192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000, 192.168.56.17(sb-locator-node-07:14864:locator)<ec><v1>:41000, 192.168.56.14(sb-node-04:8813)<v2>:41000{lead}, 192.168.56.13(sb-node-03:9180)<v2>:41000, 192.168.56.15(sb-node-05:9652)<v2>:41000, 192.168.56.12(sb-node-02:10403)<v2>:41000]  crashed: [192.168.56.11(sb-node-01:14786)<v2>:41000]; responses=[]
+2022-08-11 16:47:44 INFO  Services:333 - found possible coordinator 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000
+2022-08-11 16:47:44 INFO  Services:431 - Probable coordinator is still 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000 - waiting for a join-response
+2022-08-11 16:47:56 INFO  Services:287 - Stopping membership services
+2022-08-11 16:47:56 INFO  Services:733 - GMSHealthMonitor server thread exiting
+2022-08-11 16:47:56 WARN  InternalDistributedSystem:2616 - Caught SystemConnectException in reconnect
+org.apache.geode.SystemConnectException: Unable to join the distributed system in 60400ms
+	at org.apache.geode.distributed.internal.DistributionImpl.start(DistributionImpl.java:184) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.DistributionImpl.createDistribution(DistributionImpl.java:220) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.ClusterDistributionManager.<init>(ClusterDistributionManager.java:464) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.ClusterDistributionManager.<init>(ClusterDistributionManager.java:497) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.ClusterDistributionManager.create(ClusterDistributionManager.java:326) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.InternalDistributedSystem.initialize(InternalDistributedSystem.java:756) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.InternalDistributedSystem.access$200(InternalDistributedSystem.java:132) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.InternalDistributedSystem$Builder.build(InternalDistributedSystem.java:3013) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.InternalDistributedSystem.connectInternal(InternalDistributedSystem.java:282) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.InternalDistributedSystem.reconnect(InternalDistributedSystem.java:2584) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.InternalDistributedSystem.tryReconnect(InternalDistributedSystem.java:2403) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.InternalDistributedSystem.disconnect(InternalDistributedSystem.java:1255) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.ClusterDistributionManager$DMListener.membershipFailure(ClusterDistributionManager.java:2323) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.membership.gms.GMSMembership.uncleanShutdown(GMSMembership.java:1296) ~[geode-membership-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.membership.gms.GMSMembership$ManagerImpl.lambda$forceDisconnect$0(GMSMembership.java:2039) ~[geode-membership-9.10.13.jar:?]
+	at java.lang.Thread.run(Thread.java:750) [?:1.8.0_333]
+2022-08-11 16:47:56 INFO  InternalDistributedSystem:2537 - Disconnecting old DistributedSystem to prepare for a reconnect attempt
+```
+
+Since we have not lost data, we can safely restart **node-01** as follows.
+
+```bash
+stop_member -num 1
+show_cluster
+start_member -num 1
+```
+
+Running `./show_member_join_requests` shows **node-01** is now able to rejoin the cluster.
+
+```bash
+./show_member_join_requests
+```
+
+Output:
+
+```console
+Member join requests:
+---------------------
+sb-locator-node-06.log
+├── 2022/08/11 16:33:23.671 UTC
+│   └── 192.168.56.17(sb-locator-node-07:14864:locator)<ec>:41000
+├── 2022/08/11 16:34:41.170 UTC
+│   └── 192.168.56.11(sb-node-01:14786):41000
+├── 2022/08/11 16:34:41.175 UTC
+│   └── 192.168.56.14(sb-node-04:8813):41000
+├── 2022/08/11 16:34:41.199 UTC
+│   └── 192.168.56.13(sb-node-03:9180):41000
+├── 2022/08/11 16:34:41.218 UTC
+│   └── 192.168.56.15(sb-node-05:9652):41000
+├── 2022/08/11 16:34:41.234 UTC
+│   └── 192.168.56.12(sb-node-02:10403):41000
+├── 2022/08/11 16:58:30.237 UTC
+│   └── 192.168.56.11(sb-node-01:16784):41000
+Now: 2022/08/11 17:01:37 UTC
+```
+
+`gfsh` also shows **node-01** in the cluster.
+
+```bash
+gfsh>list members
+Member Count : 7
+
+       Name        | Id
+------------------ | ---------------------------------------------------------------------------
+sb-node-01         | 192.168.56.11(sb-node-01:16784)<v4>:41000
+sb-node-02         | 192.168.56.12(sb-node-02:10403)<v2>:41000
+sb-node-03         | 192.168.56.13(sb-node-03:9180)<v2>:41000
+sb-node-04         | 192.168.56.14(sb-node-04:8813)<v2>:41000
+sb-node-05         | 192.168.56.15(sb-node-05:9652)<v2>:41000
+sb-locator-node-06 | 192.168.56.16(sb-locator-node-06:17462:locator)<ec><v0>:41000 [Coordinator]
+sb-locator-node-07 | 192.168.56.17(sb-locator-node-07:14864:locator)<ec><v1>:41000
+```
+
+#### Type 0 Summary
+
+- This test case split the network to isolate one (1) member (in Split A) from reaching the locators and the remaining members.
+- We found that the coordinator quickly detects the unreachable member.
+- We saw no data loss and the cluster continues to run without any problems.
+- When we merged the splits, we saw the isolated member repeatedly sending join requests to the coordinator, but they are ignored. The isolated member is not able to rejoin the cluster.
+- We had to restart the isolated member for it to rejoined the cluster.
+
+---
+
 ### Type 1
 
 **Data nodes isloated, locators unreachable.** In this test case, we split the network with some data nodes unreachable by locators. i.e., Split A without locators and Split B with locators, as shown below.
@@ -472,9 +930,9 @@ Restart the cluster and ingest data.
 kill_cluster -all
 clean_cluster -all
 
-# To make sure node-01 gets selected as the lead member, run 'start_cluster_lead' in 'bin_sh/'
+# To make sure node-01 gets selected as the lead member, run 'start_cluster_lead_1' in 'bin_sh/'
 cd_cluster sb/bin_sh
-./start_cluster_lead
+./start_cluster_lead_1
 
 # Once the cluster is up, ingest data.
 cd_app perf_test_sb/bin_sh
@@ -530,7 +988,7 @@ DROP       all  --  192.168.56.17        anywhere
 From `pnode.local`, monitor the log files to see the cluster being split into two (2). The `show_cluster_views` scrapes the log files to build a complete timeline of the cluster views.
 
 ```bash
-./show_cluster_views
+./show_cluster_views -long
 ```
 
 ```console
@@ -641,7 +1099,7 @@ When the locators restart, the locators publish the new cluster view. We can see
 We can also see from the above output, that most of the time is spent restarting the system. The locator on **node-01** detects a network partition at `17:53:16.569` and logs "system restarted" at `17:55:49.779`. It took 2:33 minutes to restart the entire system (or cluster).
 
 ```bash
-./show_cluster_views
+./show_cluster_views -long
 ```
 
 Output:
@@ -875,7 +1333,7 @@ sb-locator-node-06-01.log
 If you run `show_cluster_views`, it should display the latest cluster view with **node-01** and **node-02** now belonging to the cluster.
 
 ```bash
-./show_cluster_views
+./show_cluster_views -long
 ```
 
 Output:
@@ -1075,9 +1533,9 @@ Restart the cluster and ingest data.
 kill_cluster -all
 clean_cluster -all
 
-# To make sure node-01 gets selected as the lead member, run 'start_cluster_lead' in 'bin_sh/'
+# To make sure node-01 gets selected as the lead member, run 'start_cluster_lead_1' in 'bin_sh/'
 cd_cluster sb/bin_sh
-./start_cluster_lead
+./start_cluster_lead_1
 
 # Once the cluster is up, ingest data.
 cd_app perf_test_sb/bin_sh
@@ -1196,7 +1654,7 @@ Not found.
 After a few minutes, running `show_cluster_views` shows that the **node-07** locator became the new coordinator as predicted in the previous step.
 
 ```bash
-./show_cluster_views
+./show_cluster_views -long
 ```
 
 Output:
@@ -1223,7 +1681,7 @@ sb-locator-node-07-01.log:[info 2022/07/24 15:26:55.465 UTC sb-locator-node-07-0
     └── 192.168.56.14(sb-node-04:1152)<v1>:41000
 ```
 
-Running `show_membership_service_failure` shows the fatal membership service failure error and the system has restarted. As in Type 1, once again, the cluster restarted and we lost the non-persistent data.
+Running `show_membership_service_failure` after a few minutes shows the fatal membership service failure error and the system has restarted. As in Type 1, once again, the cluster restarted and we lost the non-persistent data.
 
 ```bash
 ./show_membership_service_failure
@@ -1254,12 +1712,26 @@ http://node-07.local:7070/pulse
 
 Looking at the **node-07** log file, we see that the locator recorded that "Region /\_ConfigurationRegion  has potentially stale data" and "it is waiting for another member to recover the latest data." This is a private metadata region maintained by Geode/GemFire internals.
 
-The `missing-disk-stores` command mentioned in the log file is not useful as we are unable to login to the cluster via `gfsh`. 
+`gfsh` shows there are only three (3) members in the cluster as expected.
 
 ```bash
 gfsh
-gfsh>connect --url=http://node-07.local:7070/geode-mgmt/v1
-I/O error on GET request for "http://node-07.local:7070/geode-mgmt/v1/ping": Connection refused (Connection refused); nested exception is java.net.ConnectException: Connection refused (Connection refused)
+gfsh>connect --locator=node-07.local[10334]
+Connecting to Locator at [host=node-07.local, port=10334] ..
+Connecting to Manager at [host=192.168.56.17, port=9051] ..
+Successfully connected to: [host=192.168.56.17, port=9051]
+
+You are connected to a cluster of version: 9.10.13
+
+gfsh>list members
+Member Count : 4
+
+       Name        | Id
+------------------ | ---------------------------------------------------------------------------
+sb-node-03         | 192.168.56.13(sb-node-03:13785)<v1>:41000
+sb-node-04         | 192.168.56.14(sb-node-04:13767)<v1>:41000
+sb-node-05         | 192.168.56.15(sb-node-05:13780)<v1>:41000
+sb-locator-node-07 | 192.168.56.17(sb-locator-node-07:15214:locator)<ec><v0>:41000 [Coordinator]
 ```
 
 We also note that the log file is inundated with the last message shown in the output below.
@@ -1339,7 +1811,7 @@ sb-locator-node-07-01.log
 Running `show_cluster_views` shows that the **node-07** locator published a new cluster view with all the nodes intact.
 
 ```bash
-./show_cluster_views
+./show_cluster_views -long
 ```
 
 Output:
@@ -1434,14 +1906,14 @@ group: g1
 
 Restart the cluster and ingest data.
 
-:exclamation: *Make sure to run `start_cluster_lead_3`, not `start_cluster_lead` for this test case. In this test case, **node-03** is the lead.*
+:exclamation: *Make sure to run **`start_cluster_lead_3`**, not `start_cluster_lead_1` for this test case. In this test case, **node-03** is the lead.*
 
 ```bash
 # Kill the cluster and clean all log and persistent files
 kill_cluster -all
 clean_cluster -all
 
-# To make sure node-01 gets selected as the lead member, run 'start_cluster_lead' in 'bin_sh/'
+# To make sure node-01 gets selected as the lead member, run 'start_cluster_lead_1' in 'bin_sh/'
 cd_cluster sb/bin_sh
 ./start_cluster_lead_3
 
@@ -1464,7 +1936,7 @@ Pulse immediately reports suspects and freezes. It is no longer usable.
 
 ![Pulse Schreenshot](images/pulse-3.1.png)
 
-Running `show_cluster_views` shows that **node-06** is the coordinator.
+Running `show_cluster_views` shows that **node-07** is the coordinator.
 
 ```bash
 ./show_cluster_views
@@ -1474,35 +1946,53 @@ Output:
 
 ```console
 ...
-sb-locator-node-06-01.log:[info 2022/07/24 22:37:45.553 UTC sb-locator-node-06-01 <Geode Membership View Creator> tid=0x25]
-└── 192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000|1
-    ├── 192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000,
-    └── 192.168.56.17(sb-locator-node-07-01:16262:locator)<ec><v1>:41000
-sb-locator-node-06-01.log:[info 2022/07/24 22:39:02.902 UTC sb-locator-node-06-01 <Geode Membership View Creator> tid=0x25]
-└── 192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000|2
-    ├── 192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000,
-    ├── 192.168.56.17(sb-locator-node-07-01:16262:locator)<ec><v1>:41000,
-    ├── 192.168.56.13(sb-node-03:13017)<v2>:41000{lead},
-    ├── 192.168.56.14(sb-node-04:12920)<v2>:41000,
-    ├── 192.168.56.12(sb-node-02:13543)<v2>:41000,
-    ├── 192.168.56.11(sb-node-01:13886)<v2>:41000,
-    └── 192.168.56.15(sb-node-05:12895)<v2>:41000
-sb-locator-node-07-01.log:[info 2022/07/24 22:37:45.592 UTC sb-locator-node-07-01 <unicast receiver,node-07-15701> tid=0x1f]
-└── 192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000|1
-    ├── 192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000,
-    └── 192.168.56.17(sb-locator-node-07-01:16262:locator)<ec><v1>:41000
-sb-locator-node-07-01.log:[info 2022/07/24 22:39:02.941 UTC sb-locator-node-07-01 <unicast receiver,node-07-15701> tid=0x1f]
-└── 192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000|2
-    ├── 192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000,
-    ├── 192.168.56.17(sb-locator-node-07-01:16262:locator)<ec><v1>:41000,
-    ├── 192.168.56.13(sb-node-03:13017)<v2>:41000{lead},
-    ├── 192.168.56.14(sb-node-04:12920)<v2>:41000,
-    ├── 192.168.56.12(sb-node-02:13543)<v2>:41000,
-    ├── 192.168.56.11(sb-node-01:13886)<v2>:41000,
-    └── 192.168.56.15(sb-node-05:12895)<v2>:41000
+sb-locator-node-06.log: [warn 2022/08/10 17:56:30.307 UTC
+└── these members failed to respond to the view change
+    ├── 192.168.56.13(sb-node-03:18315)<v2>:41000
+    ├── 192.168.56.15(sb-node-05:18318)<v6>:41000
+sb-locator-node-07.log: 2022/08/10 17:53:31.185 UTC
+└── 192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000|1
+    ├── 192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:21027:locator)<ec><v1>:41000
+sb-locator-node-07.log: 2022/08/10 17:54:10.712 UTC
+└── 192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000|2
+    ├── 192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:21027:locator)<ec><v1>:41000
+    ├── 192.168.56.13(sb-node-03:18315)<v2>:41000{lead}
+sb-locator-node-07.log: 2022/08/10 17:54:11.877 UTC
+└── 192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000|3
+    ├── 192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:21027:locator)<ec><v1>:41000
+    ├── 192.168.56.13(sb-node-03:18315)<v2>:41000{lead}
+    ├── 192.168.56.11(sb-node-01:19826)<v3>:41000
+sb-locator-node-07.log: 2022/08/10 17:54:13.304 UTC
+└── 192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000|4
+    ├── 192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:21027:locator)<ec><v1>:41000
+    ├── 192.168.56.13(sb-node-03:18315)<v2>:41000{lead}
+    ├── 192.168.56.11(sb-node-01:19826)<v3>:41000
+    ├── 192.168.56.12(sb-node-02:18819)<v4>:41000
+sb-locator-node-07.log: 2022/08/10 17:54:14.711 UTC
+└── 192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000|5
+    ├── 192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:21027:locator)<ec><v1>:41000
+    ├── 192.168.56.13(sb-node-03:18315)<v2>:41000{lead}
+    ├── 192.168.56.11(sb-node-01:19826)<v3>:41000
+    ├── 192.168.56.12(sb-node-02:18819)<v4>:41000
+    ├── 192.168.56.14(sb-node-04:18309)<v5>:41000
+sb-locator-node-07.log: 2022/08/10 17:54:16.111 UTC
+└── 192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000|6
+    ├── 192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:21027:locator)<ec><v1>:41000
+    ├── 192.168.56.13(sb-node-03:18315)<v2>:41000{lead}
+    ├── 192.168.56.11(sb-node-01:19826)<v3>:41000
+    ├── 192.168.56.12(sb-node-02:18819)<v4>:41000
+    ├── 192.168.56.14(sb-node-04:18309)<v5>:41000
+    ├── 192.168.56.15(sb-node-05:18318)<v6>:41000
+Now: 2022/08/10 18:01:30 UTC
 ```
 
-Running `./show_all_suspect_node_pairs` shows that the **node-07** locator is a suspect for all the members in Split B (**node-03**, **node-04**, **node-05**), but the **node-06** locator is a suspect for only **node-04** and **node-05**. **node-03** is not registered as a suspect. With this discrepency, we cannot conclusively determine the network partition state.
+Running `./show_all_suspect_node_pairs` shows that **node-02**, **node-03**, and **node-07** are suspects. These members do not represent neither Split A nor Split B. We cannot rely on this information to determine the network partition state.
 
 ```bash
 ./show_all_suspect_node_pairs
@@ -1513,22 +2003,30 @@ Output:
 ```console
 Suspect: node-01
 ---------------------------------------
-For:
-192.168.56.15(sb-node-05:12895)
-
-First logged:
-sb-locator-node-06-01.log:[info 2022/07/24 22:43:22.599 UTC sb-locator-node-06-01 <unicast receiver,node-06-47860> tid=0x1e] received suspect message from 192.168.56.11(sb-node-01:13886)<v2>:41000 for 192.168.56.15(sb-node-05:12895)<v2>:41000: Member isn't responding to heartbeat requests
-
-Last logged:
-sb-node-05.log:2022-07-24 22:43:22 INFO  Services:1196 - received suspect message from 192.168.56.11(sb-node-01:13886)<v2>:41000 for 192.168.56.15(sb-node-05:12895)<v2>:41000: Member isn't responding to heartbeat requests
+Not found.
 
 Suspect: node-02
 ---------------------------------------
-Not found.
+For:
+├── 192.168.56.14(sb-node-04:18309)
+└── 192.168.56.15(sb-node-05:18318)
+
+First logged:
+
+Last logged:
 
 Suspect: node-03
 ---------------------------------------
-Not found.
+For:
+└── 192.168.56.14(sb-node-04:18309)
+
+First logged:
+
+Last logged:
+2022-08-10 17:56:28
+├── from: 192.168.56.13(sb-node-03:18315)<v2>:41000
+├── for: 192.168.56.14(sb-node-04:18309)<v5>:41000
+└── member unexpectedly shut down shared, unordered connection
 
 Suspect: node-04
 ---------------------------------------
@@ -1540,36 +2038,21 @@ Not found.
 
 Suspect: node-06
 ---------------------------------------
-For:
-192.168.56.14(sb-node-04:12920)
-192.168.56.15(sb-node-05:12895)
-
-First logged:
-sb-locator-node-06-01.log:[info 2022/07/24 22:43:22.599 UTC sb-locator-node-06-01 <unicast receiver,node-06-47860> tid=0x1e] received suspect message from 192.168.56.11(sb-node-01:13886)<v2>:41000 for 192.168.56.15(sb-node-05:12895)<v2>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-07-01.log:[info 2022/07/24 22:43:30.171 UTC sb-locator-node-07-01 <unicast receiver,node-07-15701> tid=0x1f] received suspect message from 192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000 for 192.168.56.14(sb-node-04:12920)<v2>:41000: Member isn't responding to heartbeat requests
-
-Last logged:
-sb-node-04.log:2022-07-24 22:43:30 INFO  Services:1196 - received suspect message from 192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000 for 192.168.56.14(sb-node-04:12920)<v2>:41000: Member isn't responding to heartbeat requests
+Not found.
 
 Suspect: node-07
 ---------------------------------------
 For:
-192.168.56.13(sb-node-03:13017)
-192.168.56.14(sb-node-04:12920)
-192.168.56.15(sb-node-05:12895)
+└── 192.168.56.13(sb-node-03:18315)
 
 First logged:
-sb-locator-node-06-01.log:[info 2022/07/24 22:43:22.599 UTC sb-locator-node-06-01 <unicast receiver,node-06-47860> tid=0x1e] received suspect message from 192.168.56.11(sb-node-01:13886)<v2>:41000 for 192.168.56.15(sb-node-05:12895)<v2>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-06-01.log:[info 2022/07/24 22:43:22.656 UTC sb-locator-node-06-01 <unicast receiver,node-06-47860> tid=0x1e] received suspect message from 192.168.56.17(sb-locator-node-07-01:16262:locator)<ec><v1>:41000 for 192.168.56.13(sb-node-03:13017)<v2>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-06-01.log:[info 2022/07/24 22:43:25.156 UTC sb-locator-node-06-01 <unicast receiver,node-06-47860> tid=0x1e] received suspect message from 192.168.56.17(sb-locator-node-07-01:16262:locator)<ec><v1>:41000 for 192.168.56.14(sb-node-04:12920)<v2>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-07-01.log:[info 2022/07/24 22:43:30.171 UTC sb-locator-node-07-01 <unicast receiver,node-07-15701> tid=0x1f] received suspect message from 192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000 for 192.168.56.14(sb-node-04:12920)<v2>:41000: Member isn't responding to heartbeat requests
 
 Last logged:
-sb-node-05.log:2022-07-24 22:43:22 INFO  Services:1196 - received suspect message from 192.168.56.17(sb-locator-node-07-01:16262:locator)<ec><v1>:41000 for 192.168.56.13(sb-node-03:13017)<v2>:41000: Member isn't responding to heartbeat requests
-sb-node-05.log:2022-07-24 22:43:25 INFO  Services:1196 - received suspect message from 192.168.56.17(sb-locator-node-07-01:16262:locator)<ec><v1>:41000 for 192.168.56.14(sb-node-04:12920)<v2>:41000: Member isn't responding to heartbeat requests
+
+Now: 2022/08/10 18:04:53 UTC
 ```
 
-Running `show_membership_service_failure` clearly shows the state of the cluster. The **node-06** locator coordinator has declared a network partition with the Split B members listed. Unlike `show_all_suspect_node_pairs`, it accurately determined all the unreachable members. The `show_all_suspect_node_pairs` discrepency is due to the incomplete log messages extracted from each member's log file.
+Running `show_membership_service_failure` clearly shows the state of the cluster. The **node-06** locator coordinator has declared a network partition with the Split B members listed. Unlike `show_all_suspect_node_pairs`, it accurately determined all the unreachable members. The `show_all_suspect_node_pairs` discrepency is due to the incomplete log messages being recorded in the log files while the cluster is experiencing the network failure. It is important to note that we must use all the available diagnostic tools before deriving a conclusion.
 
 ```bash
 ./show_membership_service_failure
@@ -1580,15 +2063,16 @@ Output:
 ```console
 Member service failure
 ----------------------
-sb-locator-node-06-01.log
-├── [fatal 2022/07/24 22:43:31.172 UTC
+sb-locator-node-06.log
+├── [fatal 2022/08/10 17:56:31.315 UTC
 │   └── Membership service failure: Exiting due to possible network partition event due to loss of 3 cache processes:
-│       ├── 192.168.56.13(sb-node-03:13017)<v2>:41000,
-│       ├── 192.168.56.14(sb-node-04:12920)<v2>:41000,
-│       ├── 192.168.56.15(sb-node-05:12895)<v2>:41000
-sb-locator-node-07-01.log
-├── [fatal 2022/07/24 22:43:30.195 UTC
-│   └── Membership service failure: Membership coordinator 192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000 has declared that a network partition has occurred
+│       ├── 192.168.56.13(sb-node-03:18315)<v2>:41000
+│       ├── 192.168.56.14(sb-node-04:18309)<v5>:41000
+│       └── 192.168.56.15(sb-node-05:18318)<v6>:41000
+sb-locator-node-07.log
+├── [fatal 2022/08/10 17:56:30.363 UTC
+│   └── Membership service failure: Membership coordinator 192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000 has declared that a network partition has occurred
+Now: 2022/08/10 18:07:10 UTC
 ```
 
 `gfsh` is unable to connect to any of the locators.
@@ -1597,6 +2081,21 @@ sb-locator-node-07-01.log
 gfsh
 gfsh>connect --url=http://node-06.local:7070/geode-mgmt/v1
 I/O error on GET request for "http://node-07.local:7070/geode-mgmt/v1/ping": Connection refused (Connection refused); nested exception is java.net.ConnectException: Connection refused (Connection refused)
+```
+
+`test_group -list` also unable to connect to the cluster.
+
+```bash
+cd_app perf_test_sb/bin_sh
+./test_group -list
+```
+
+Output:
+
+```console
+...
+Exception in thread "main" org.apache.geode.cache.client.NoAvailableLocatorsException: Unable to connect to any locators in the list [LocatorAddress [socketInetAddress=node-06.local/192.168.56.16:10334, hostname=node-06.local, isIpString=false], LocatorAddress [socketInetAddress=node-07.local/192.168.56.17:10334, hostname=node-07.local, isIpString=false]]
+...
 ```
 
 Running `show_cluster`  shows all the members are still running.
@@ -1611,7 +2110,7 @@ Output:
          CLUSTER: sb
      CLUSTER_DIR: /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb
          PRODUCT: geode
-    CLUSTER_TYPE: geode
+    CLUSTER_TYPE: gemfire
         Run Type: default
       Deployment: VM
 Locators Running: 2/2
@@ -1641,15 +2140,15 @@ Output:
 
 ```console
 ...
-[info 2022/07/24 23:39:54.670 UTC sb-locator-node-07-01 <Location services restart thread> tid=0x9f] quorum check: timeout waiting for responses.  4 responses received
+[info 2022/08/10 18:27:32.866 UTC sb-locator-node-07 <Location services restart thread> tid=0x5d] quorum check: timeout waiting for responses.  4 responses received
 
-[info 2022/07/24 23:39:54.671 UTC sb-locator-node-07-01 <Location services restart thread> tid=0x9f] quorum check: contacted 4 processes with 26 member weight units.  Threshold for a quorum is 31
+[info 2022/08/10 18:27:32.867 UTC sb-locator-node-07 <Location services restart thread> tid=0x5d] quorum check: contacted 4 processes with 26 member weight units.  Threshold for a quorum is 31
 
-[info 2022/07/24 23:40:24.702 UTC sb-locator-node-07-01 <Location services restart thread> tid=0x9f] beginning quorum check with GMSQuorumChecker on view View[192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000|-100] members: [192.168.56.16(sb-locator-node-06-01:15804:locator)<ec><v0>:41000, 192.168.56.17(sb-locator-node-07-01:16262:locator)<ec><v1>:41000, 192.168.56.13(sb-node-03:13017)<v2>:41000{lead}, 192.168.56.14(sb-node-04:12920)<v2>:41000, 192.168.56.12(sb-node-02:13543)<v2>:41000, 192.168.56.11(sb-node-01:13886)<v2>:41000, 192.168.56.15(sb-node-05:12895)<v2>:41000]
+[info 2022/08/10 18:28:02.893 UTC sb-locator-node-07 <Location services restart thread> tid=0x5d] beginning quorum check with GMSQuorumChecker on view View[192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000|-100] members: [192.168.56.16(sb-locator-node-06:21653:locator)<ec><v0>:41000, 192.168.56.17(sb-locator-node-07:21027:locator)<ec><v1>:41000, 192.168.56.13(sb-node-03:18315)<v2>:41000{lead}, 192.168.56.11(sb-node-01:19826)<v3>:41000, 192.168.56.12(sb-node-02:18819)<v4>:41000, 192.168.56.14(sb-node-04:18309)<v5>:41000, 192.168.56.15(sb-node-05:18318)<v6>:41000]
 ...
 ```
 
-We can try to add a new node to the cluster to increase the total weight, but the locators will refuse connection.
+We can try to add a new node to the cluster to increase the total weight, but the locators will refuse connections.
 
 We have no way of restarting the cluster. It is stuck in a quorem check loop indefinitely.
 
@@ -1682,9 +2181,9 @@ Restart the cluster and ingest data.
 kill_cluster -all
 clean_cluster -all
 
-# To make sure node-01 gets selected as the lead member, run 'start_cluster_lead' in 'bin_sh/'
+# To make sure node-01 gets selected as the lead member, run 'start_cluster_lead_1' in 'bin_sh/'
 cd_cluster sb/bin_sh
-./start_cluster_lead
+./start_cluster_lead_1
 
 # Once the cluster is up, ingest data.
 cd_app perf_test_sb/bin_sh
@@ -1705,7 +2204,6 @@ Pulse immediately reports suspects and freezes. It is no longer usable.
 
 ![Pulse Schreenshot](images/pulse-3.1.png)
 
-
 Running `show_all_suspect_node_pairs` shows that **node-06** and **node-07** are suspects for all the data nodes. This is expected since both locators are not reachable by the data nodes.
 
 ```bash
@@ -1717,7 +2215,12 @@ Output:
 ```console
 Suspect: node-01
 ---------------------------------------
-Not found.
+For:
+└── 192.168.56.12(sb-node-02:20666)
+
+First logged:
+
+Last logged:
 
 Suspect: node-02
 ---------------------------------------
@@ -1725,85 +2228,67 @@ Not found.
 
 Suspect: node-03
 ---------------------------------------
-For:
-192.168.56.15(sb-node-05:13230)
-
-First logged:
-sb-node-01.log:2022-07-28 10:42:20 INFO  Services:1196 - received suspect message from 192.168.56.13(sb-node-03:13116)<v2>:41000 for 192.168.56.15(sb-node-05:13230)<v2>:41000: member unexpectedly shut down shared, unordered connection
-
-Last logged:
-sb-node-04.log:2022-07-28 10:42:20 INFO  Services:1196 - received suspect message from 192.168.56.13(sb-node-03:13116)<v2>:41000 for 192.168.56.15(sb-node-05:13230)<v2>:41000: member unexpectedly shut down shared, unordered connection
+Not found.
 
 Suspect: node-04
 ---------------------------------------
 For:
-192.168.56.15(sb-node-05:13230)
+└── 192.168.56.12(sb-node-02:20666)
 
 First logged:
-sb-node-01.log:2022-07-28 10:42:20 INFO  Services:1196 - received suspect message from 192.168.56.13(sb-node-03:13116)<v2>:41000 for 192.168.56.15(sb-node-05:13230)<v2>:41000: member unexpectedly shut down shared, unordered connection
-sb-node-01.log:2022-07-28 10:42:21 INFO  Services:1196 - received suspect message from 192.168.56.14(sb-node-04:13234)<v2>:41000 for 192.168.56.15(sb-node-05:13230)<v2>:41000: member unexpectedly shut down shared, unordered connection
 
 Last logged:
-sb-node-03.log:2022-07-28 10:42:21 INFO  Services:1196 - received suspect message from 192.168.56.14(sb-node-04:13234)<v2>:41000 for 192.168.56.15(sb-node-05:13230)<v2>:41000: member unexpectedly shut down shared, unordered connection
+2022-08-10 18:33:32
+├── from: 192.168.56.14(sb-node-04:19970)<v2>:41000
+├── for: 192.168.56.12(sb-node-02:20666)<v2>:41000
+└── member unexpectedly shut down shared, unordered connection
 
 Suspect: node-05
 ---------------------------------------
-Not found.
+For:
+└── 192.168.56.12(sb-node-02:20666)
+
+First logged:
+2022-08-10 18:33:32
+├── from: 192.168.56.15(sb-node-05:19975)<v2>:41000
+├── for: 192.168.56.12(sb-node-02:20666)<v2>:41000
+└── member unexpectedly shut down shared, unordered connection
+
+Last logged:
 
 Suspect: node-06
 ---------------------------------------
 For:
-192.168.56.11(sb-node-01:14114)
-192.168.56.12(sb-node-02:13192)
-192.168.56.13(sb-node-03:13116)
-192.168.56.14(sb-node-04:13234)
-192.168.56.15(sb-node-05:13230)
+├── 192.168.56.11(sb-node-01:21684)
+├── 192.168.56.13(sb-node-03:20025)
+├── 192.168.56.14(sb-node-04:19970)
+├── 192.168.56.14(sb-node-04:19970)
+└── 192.168.56.15(sb-node-05:19975)
 
 First logged:
-sb-locator-node-07-01.log:[info 2022/07/28 10:42:20.596 UTC sb-locator-node-07-01 <unicast receiver,node-07-38601> tid=0x1e] received suspect message from 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000 for 192.168.56.12(sb-node-02:13192)<v2>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-07-01.log:[info 2022/07/28 10:42:23.096 UTC sb-locator-node-07-01 <unicast receiver,node-07-38601> tid=0x1e] received suspect message from 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000 for 192.168.56.14(sb-node-04:13234)<v2>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-07-01.log:[info 2022/07/28 10:42:25.595 UTC sb-locator-node-07-01 <unicast receiver,node-07-38601> tid=0x1e] received suspect message from 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000 for 192.168.56.13(sb-node-03:13116)<v2>:41000: Member isn't responding to heartbeat requests
-sb-node-01.log:2022-07-28 10:42:20 INFO  Services:1196 - received suspect message from 192.168.56.13(sb-node-03:13116)<v2>:41000 for 192.168.56.15(sb-node-05:13230)<v2>:41000: member unexpectedly shut down shared, unordered connection
-sb-node-01.log:2022-07-28 10:42:21 INFO  Services:1196 - received suspect message from 192.168.56.14(sb-node-04:13234)<v2>:41000 for 192.168.56.15(sb-node-05:13230)<v2>:41000: member unexpectedly shut down shared, unordered connection
 
 Last logged:
-sb-node-04.log:2022-07-28 10:42:20 INFO  Services:1196 - received suspect message from 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000 for 192.168.56.12(sb-node-02:13192)<v2>:41000: Member isn't responding to heartbeat requests
-sb-node-04.log:2022-07-28 10:42:23 INFO  Services:1196 - received suspect message from 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000 for 192.168.56.14(sb-node-04:13234)<v2>:41000: Member isn't responding to heartbeat requests
-sb-node-04.log:2022-07-28 10:42:25 INFO  Services:1196 - received suspect message from 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000 for 192.168.56.13(sb-node-03:13116)<v2>:41000: Member isn't responding to heartbeat requests
 
 Suspect: node-07
 ---------------------------------------
 For:
-192.168.56.11(sb-node-01:14114)
-192.168.56.12(sb-node-02:13192)
-192.168.56.13(sb-node-03:13116)
-192.168.56.14(sb-node-04:13234)
-192.168.56.15(sb-node-05:13230)
+├── 192.168.56.11(sb-node-01:21684)
+├── 192.168.56.12(sb-node-02:20666)
+├── 192.168.56.13(sb-node-03:20025)
+├── 192.168.56.14(sb-node-04:19970)
+└── 192.168.56.15(sb-node-05:19975)
 
 First logged:
-sb-locator-node-06-01.log:[info 2022/07/28 10:42:13.109 UTC sb-locator-node-06-01 <unicast receiver,node-06-33569> tid=0x1f] received suspect message from 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000 for 192.168.56.15(sb-node-05:13230)<v2>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-06-01.log:[info 2022/07/28 10:42:15.606 UTC sb-locator-node-06-01 <unicast receiver,node-06-33569> tid=0x1f] received suspect message from 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000 for 192.168.56.12(sb-node-02:13192)<v2>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-06-01.log:[info 2022/07/28 10:42:18.106 UTC sb-locator-node-06-01 <unicast receiver,node-06-33569> tid=0x1f] received suspect message from 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000 for 192.168.56.14(sb-node-04:13234)<v2>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-06-01.log:[info 2022/07/28 10:42:25.606 UTC sb-locator-node-06-01 <unicast receiver,node-06-33569> tid=0x1f] received suspect message from 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000 for 192.168.56.13(sb-node-03:13116)<v2>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-06-01.log:[info 2022/07/28 10:42:33.106 UTC sb-locator-node-06-01 <unicast receiver,node-06-33569> tid=0x1f] received suspect message from 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000 for 192.168.56.11(sb-node-01:14114)<v2>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-07-01.log:[info 2022/07/28 10:42:20.596 UTC sb-locator-node-07-01 <unicast receiver,node-07-38601> tid=0x1e] received suspect message from 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000 for 192.168.56.12(sb-node-02:13192)<v2>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-07-01.log:[info 2022/07/28 10:42:23.096 UTC sb-locator-node-07-01 <unicast receiver,node-07-38601> tid=0x1e] received suspect message from 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000 for 192.168.56.14(sb-node-04:13234)<v2>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-07-01.log:[info 2022/07/28 10:42:25.595 UTC sb-locator-node-07-01 <unicast receiver,node-07-38601> tid=0x1e] received suspect message from 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000 for 192.168.56.13(sb-node-03:13116)<v2>:41000: Member isn't responding to heartbeat requests
-sb-node-01.log:2022-07-28 10:42:20 INFO  Services:1196 - received suspect message from 192.168.56.13(sb-node-03:13116)<v2>:41000 for 192.168.56.15(sb-node-05:13230)<v2>:41000: member unexpectedly shut down shared, unordered connection
-sb-node-01.log:2022-07-28 10:42:21 INFO  Services:1196 - received suspect message from 192.168.56.14(sb-node-04:13234)<v2>:41000 for 192.168.56.15(sb-node-05:13230)<v2>:41000: member unexpectedly shut down shared, unordered connection
 
 Last logged:
-sb-node-04.log:2022-07-28 10:42:30 INFO  Services:1196 - received suspect message from 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000 for 192.168.56.13(sb-node-03:13116)<v2>:41000: Member isn't responding to heartbeat requests
-sb-node-04.log:2022-07-28 10:42:33 INFO  Services:1196 - received suspect message from 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000 for 192.168.56.11(sb-node-01:14114)<v2>:41000: Member isn't responding to heartbeat requests
-sb-node-05.log:2022-07-28 10:42:13 INFO  Services:1196 - received suspect message from 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000 for 192.168.56.15(sb-node-05:13230)<v2>:41000: Member isn't responding to heartbeat requests
-sb-node-05.log:2022-07-28 10:42:15 INFO  Services:1196 - received suspect message from 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000 for 192.168.56.12(sb-node-02:13192)<v2>:41000: Member isn't responding to heartbeat requests
-sb-node-05.log:2022-07-28 10:42:18 INFO  Services:1196 - received suspect message from 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000 for 192.168.56.14(sb-node-04:13234)<v2>:41000: Member isn't responding to heartbeat requests
+
+Now: 2022/08/10 18:35:10 UTC
 ```
 
-Running `show_cluster_views` shows that initially, both locators (**node-06** and **node-07**) can only see themselves but at `10:38:11`, both recorded a complete view of all the data nodes. We also see after 5:31 minutes, at `10:42:31.423`, there are four (4) data nodes failed to respond to the view change. We are expecting all five (5) data nodes to fail to repond, however. The cluster views do not represent the current state of the cluster. We need to investigate the log files further.
+Running `show_cluster_views` shows that initially, both locators (**node-06** and **node-07**) can only see themselves but at `18:31:25`, both recorded a complete view of all the data nodes. We also see after 5:31 minutes, at `18:33:45.230`, there are four (4) data nodes failed to respond to the view change. We are expecting all five (5) data nodes to fail to repond, however. The cluster views do not represent the current state of the cluster. We need to investigate the log files further.
 
 ```bash
-./show_cluster_views
+./show_cluster_views -long
 ```
 
 Output:
@@ -1811,41 +2296,42 @@ Output:
 ```console
 Received Views
 --------------
-sb-locator-node-06-01.log:[info 2022/07/28 10:36:55.679 UTC sb-locator-node-06-01 <main> tid=0x1]
-└── 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000|0
-    └── 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000
-sb-locator-node-06-01.log:[info 2022/07/28 10:36:56.070 UTC sb-locator-node-06-01 <Geode Membership View Creator> tid=0x26]
-└── 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000|1
-    ├── 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000
-    └── 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000
-sb-locator-node-06-01.log:[info 2022/07/28 10:38:11.064 UTC sb-locator-node-06-01 <Geode Membership View Creator> tid=0x26]
-└── 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000|2
-    ├── 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000
-    ├── 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000
-    ├── 192.168.56.15(sb-node-05:13230)<v2>:41000{lead}
-    ├── 192.168.56.12(sb-node-02:13192)<v2>:41000
-    ├── 192.168.56.14(sb-node-04:13234)<v2>:41000
-    ├── 192.168.56.13(sb-node-03:13116)<v2>:41000
-    └── 192.168.56.11(sb-node-01:14114)<v2>:41000
-sb-locator-node-06-01.log:[warn 2022/07/28 10:42:31.423 UTC sb-locator-node-06-01 <Geode Membership View Creator> tid=0x26]
+sb-locator-node-06.log:[info 2022/08/10 18:30:14.797 UTC sb-locator-node-06 <main> tid=0x1]
+└── 192.168.56.16(sb-locator-node-06:23888:locator)<ec><v0>:41000|0
+    ├── 192.168.56.16(sb-locator-node-06:23888:locator)<ec><v0>:41000
+sb-locator-node-06.log:[info 2022/08/10 18:30:15.129 UTC sb-locator-node-06 <Geode Membership View Creator> tid=0x25]
+└── 192.168.56.16(sb-locator-node-06:23888:locator)<ec><v0>:41000|1
+    ├── 192.168.56.16(sb-locator-node-06:23888:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:23497:locator)<ec><v1>:41000
+sb-locator-node-06.log:[info 2022/08/10 18:31:25.488 UTC sb-locator-node-06 <Geode Membership View Creator> tid=0x25]
+└── 192.168.56.16(sb-locator-node-06:23888:locator)<ec><v0>:41000|2
+    ├── 192.168.56.16(sb-locator-node-06:23888:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:23497:locator)<ec><v1>:41000
+    ├── 192.168.56.12(sb-node-02:20666)<v2>:41000{lead}
+    ├── 192.168.56.11(sb-node-01:21684)<v2>:41000
+    ├── 192.168.56.15(sb-node-05:19975)<v2>:41000
+    ├── 192.168.56.13(sb-node-03:20025)<v2>:41000
+    ├── 192.168.56.14(sb-node-04:19970)<v2>:41000
+sb-locator-node-06.log:[warn 2022/08/10 18:33:45.230 UTC sb-locator-node-06 <Geode Membership View Creator> tid=0x25]
 └── these members failed to respond to the view change
-    ├── 192.168.56.11(sb-node-01:14114)<v2>:41000
-    ├── 192.168.56.12(sb-node-02:13192)<v2>:41000
-    ├── 192.168.56.13(sb-node-03:13116)<v2>:41000
-    └── 192.168.56.14(sb-node-04:13234)<v2>:41000
-sb-locator-node-07-01.log:[info 2022/07/28 10:36:56.090 UTC sb-locator-node-07-01 <unicast receiver,node-07-38601> tid=0x1e]
-└── 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000|1
-    ├── 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000
-    └── 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000
-sb-locator-node-07-01.log:[info 2022/07/28 10:38:11.081 UTC sb-locator-node-07-01 <unicast receiver,node-07-38601> tid=0x1e]
-└── 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000|2
-    ├── 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000
-    ├── 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000
-    ├── 192.168.56.15(sb-node-05:13230)<v2>:41000{lead}
-    ├── 192.168.56.12(sb-node-02:13192)<v2>:41000
-    ├── 192.168.56.14(sb-node-04:13234)<v2>:41000
-    ├── 192.168.56.13(sb-node-03:13116)<v2>:41000
-    └── 192.168.56.11(sb-node-01:14114)<v2>:41000
+    ├── 192.168.56.11(sb-node-01:21684)<v2>:41000
+    ├── 192.168.56.13(sb-node-03:20025)<v2>:41000
+    ├── 192.168.56.14(sb-node-04:19970)<v2>:41000
+    ├── 192.168.56.15(sb-node-05:19975)<v2>:41000
+sb-locator-node-07.log:[info 2022/08/10 18:30:15.087 UTC sb-locator-node-07 <unicast receiver,node-07-39292> tid=0x1e]
+└── 192.168.56.16(sb-locator-node-06:23888:locator)<ec><v0>:41000|1
+    ├── 192.168.56.16(sb-locator-node-06:23888:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:23497:locator)<ec><v1>:41000
+sb-locator-node-07.log:[info 2022/08/10 18:31:25.444 UTC sb-locator-node-07 <unicast receiver,node-07-39292> tid=0x1e]
+└── 192.168.56.16(sb-locator-node-06:23888:locator)<ec><v0>:41000|2
+    ├── 192.168.56.16(sb-locator-node-06:23888:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:23497:locator)<ec><v1>:41000
+    ├── 192.168.56.12(sb-node-02:20666)<v2>:41000{lead}
+    ├── 192.168.56.11(sb-node-01:21684)<v2>:41000
+    ├── 192.168.56.15(sb-node-05:19975)<v2>:41000
+    ├── 192.168.56.13(sb-node-03:20025)<v2>:41000
+    ├── 192.168.56.14(sb-node-04:19970)<v2>:41000
+Now: 2022/08/10 18:35:38 UTC
 ```
 
 Since the cluster views do not reflect the current state of the cluster, we turn to `show_membership_service_failure`, which shows what we are expecting. We can see from the output below that a network partition has occurred and all five (5) data nodes are unreachable by the **node-06** locator.
@@ -1859,17 +2345,18 @@ Output:
 ```console
 Member service failure
 ----------------------
-sb-locator-node-06-01.log
-├── [fatal 2022/07/28 10:42:42.443 UTC
+sb-locator-node-06.log
+├── [fatal 2022/08/10 18:33:56.253 UTC
 │   └── Membership service failure: Exiting due to possible network partition event due to loss of 5 cache processes:
-│       ├── 192.168.56.11(sb-node-01:14114)<v2>:41000,
-│       ├── 192.168.56.12(sb-node-02:13192)<v2>:41000,
-│       ├── 192.168.56.13(sb-node-03:13116)<v2>:41000,
-│       ├── 192.168.56.14(sb-node-04:13234)<v2>:41000,
-│       └── 192.168.56.15(sb-node-05:13230)<v2>:41000
-sb-locator-node-07-01.log
-├── [fatal 2022/07/28 10:42:41.443 UTC
-│   └── Membership service failure: Membership coordinator 192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000 has declared that a network partition has occurred
+│       ├── 192.168.56.11(sb-node-01:21684)<v2>:41000
+│       ├── 192.168.56.12(sb-node-02:20666)<v2>:41000
+│       ├── 192.168.56.13(sb-node-03:20025)<v2>:41000
+│       ├── 192.168.56.14(sb-node-04:19970)<v2>:41000
+│       └── 192.168.56.15(sb-node-05:19975)<v2>:41000
+sb-locator-node-07.log
+├── [fatal 2022/08/10 18:33:55.202 UTC
+│   └── Membership service failure: Membership coordinator 192.168.56.16(sb-locator-node-06:23888:locator)<ec><v0>:41000 has declared that a network partition has occurred
+Now: 2022/08/10 18:38:34 UTC
 ```
 
 Attempting to connect to the cluster using `gfsh` fails for both locators as shown below.
@@ -1887,7 +2374,7 @@ We now attempt to merge the splits.
 ./merge_cluster
 ```
 
-The **node-06** locator log files show that both locators are sending "quorum check" requests to all the members, but none of them are responding as shown below. It is able to contact two (2) members at `10:56:17.606` with a total weight of 6 indicating that they are locators. Each locator has the weight of 3. The **node-06** locator continously try to contact the data nodes but fail to get responses and therefore the cluster cannot be reinstated.
+The **node-06** locator log files show that both locators are sending "quorum check" requests to all the members, but none of them are responding as shown below. It is able to contact two (2) members at **`18:42:12.286`** with a total weight of 6 indicating that they are locators. Each locator has the weight of 3. The **node-06** locator continously try to contact the data nodes but fail to get responses and therefore the cluster cannot be reinstated.
 
 ```bash
 # View node-06 locator log
@@ -1898,52 +2385,74 @@ Output:
 
 ```console
 ...
-[info 2022/07/28 10:56:17.105 UTC sb-locator-node-06-01 <Location services restart thread> tid=0x9f] quorum check: waiting up to 461ms to receive a quorum of responses
+[info 2022/08/10 18:42:11.785 UTC sb-locator-node-06 <Location services restart thread> tid=0x87] quorum check: waiting up to 456ms to receive a quorum of responses
 
-[info 2022/07/28 10:56:17.606 UTC sb-locator-node-06-01 <Location services restart thread> tid=0x9f] quorum check: timeout waiting for responses.  2 responses received
+[info 2022/08/10 18:42:12.286 UTC sb-locator-node-06 <Location services restart thread> tid=0x87] quorum check: timeout waiting for responses.  2 responses received
 
-[info 2022/07/28 10:56:17.607 UTC sb-locator-node-06-01 <Location services restart thread> tid=0x9f] quorum check: contacted 2 processes with 6 member weight units.  Threshold for a quorum is 31
-[info 2022/07/28 10:56:47.630 UTC sb-locator-node-06-01 <Location services restart thread> tid=0x9f] beginning quorum check with GMSQuorumChecker on view View[192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000|-100] members: [192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000, 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000, 192.168.56.15(sb-node-05:13230)<v2>:41000{lead}, 192.168.56.12(sb-node-02:13192)<v2>:41000, 192.168.56.14(sb-node-04:13234)<v2>:41000, 192.168.56.13(sb-node-03:13116)<v2>:41000, 192.168.56.11(sb-node-01:14114)<v2>:41000]
+[info 2022/08/10 18:42:12.287 UTC sb-locator-node-06 <Location services restart thread> tid=0x87] quorum check: contacted 2 processes with 6 member weight units.  Threshold for a quorum is 31
 
-[info 2022/07/28 10:56:47.631 UTC sb-locator-node-06-01 <Location services restart thread> tid=0x9f] quorum check: sending request to 192.168.56.15(sb-node-05:13230)<v2>:41000
+[info 2022/08/10 18:42:42.324 UTC sb-locator-node-06 <Location services restart thread> tid=0x87] beginning quorum check with GMSQuorumChecker on view View[192.168.56.16(sb-locator-node-06:23888:locator)<ec><v0>:41000|-
+100] members: [192.168.56.16(sb-locator-node-06:23888:locator)<ec><v0>:41000, 192.168.56.17(sb-locator-node-07:23497:locator)<ec><v1>:41000, 192.168.56.12(sb-node-02:20666)<v2>:41000{lead}, 192.168.56.11(sb-node-01:2168
+4)<v2>:41000, 192.168.56.15(sb-node-05:19975)<v2>:41000, 192.168.56.13(sb-node-03:20025)<v2>:41000, 192.168.56.14(sb-node-04:19970)<v2>:41000]
 
-[info 2022/07/28 10:56:47.631 UTC sb-locator-node-06-01 <Location services restart thread> tid=0x9f] quorum check: sending request to 192.168.56.12(sb-node-02:13192)<v2>:41000
-
+[info 2022/08/10 18:42:42.325 UTC sb-locator-node-06 <Location services restart thread> tid=0x87] quorum check: sending request to 192.168.56.12(sb-node-02:20666)<v2>:41000
 ...
+[info 2022/08/10 18:43:02.877 UTC sb-locator-node-06 <ReconnectThread> tid=0x86] Serial Queue info : THROTTLE_PERCENT: 0.75 SERIAL_QUEUE_BYTE_LIMIT :41943040 SERIAL_QUEUE_THROTTLE :31457280 TOTAL_SERIAL_QUEUE_BYTE_LIMIT
+ :83886080 TOTAL_SERIAL_QUEUE_THROTTLE :31457280 SERIAL_QUEUE_SIZE_LIMIT :20000 SERIAL_QUEUE_SIZE_THROTTLE :15000
 
-[info 2022/07/28 10:56:48.246 UTC sb-locator-node-06-01 <ReconnectThread> tid=0x9e] Serial Queue info : THROTTLE_PERCENT: 0.75 SERIAL_QUEUE_BYTE_LIMIT :41943040 SERIAL_QUEUE_THROTTLE :31457280 TOTAL_SERIAL_QUEUE_BYTE_LIMIT :83886080 TOTAL_SERIAL_QUEUE_THROTTLE :31457280 SERIAL_QUEUE_SIZE_LIMIT :20000 SERIAL_QUEUE_SIZE_THROTTLE :15000
+[info 2022/08/10 18:43:02.878 UTC sb-locator-node-06 <ReconnectThread> tid=0x86] Starting membership services
 
-[info 2022/07/28 10:56:48.248 UTC sb-locator-node-06-01 <ReconnectThread> tid=0x9e] Starting membership services
+[info 2022/08/10 18:43:02.879 UTC sb-locator-node-06 <ReconnectThread> tid=0x86] Established local address 192.168.56.16(sb-locator-node-06:23888:locator)<ec>:41000
 
-[info 2022/07/28 10:56:48.257 UTC sb-locator-node-06-01 <ReconnectThread> tid=0x9e] Failed to connect to node-06.local/192.168.56.16:10334
+[info 2022/08/10 18:43:02.879 UTC sb-locator-node-06 <ReconnectThread> tid=0x86] This member is hosting a locator will be preferred as a membership coordinator
 
-[info 2022/07/28 10:56:48.259 UTC sb-locator-node-06-01 <ReconnectThread> tid=0x9e] Unable to contact locator HostAndPort[node-06.local:10334]: java.net.ConnectException: Connection refused (Connection refused)
+[info 2022/08/10 18:43:02.879 UTC sb-locator-node-06 <ReconnectThread> tid=0x86] JGroups channel reinitialized (took 0ms)
 
-[info 2022/07/28 10:56:48.260 UTC sb-locator-node-06-01 <ReconnectThread> tid=0x9e] Failed to connect to node-07.local/192.168.56.17:10334
+[info 2022/08/10 18:43:02.880 UTC sb-locator-node-06 <ReconnectThread> tid=0x86] GemFire P2P Listener started on /192.168.56.16:57185
 
-[info 2022/07/28 10:56:48.260 UTC sb-locator-node-06-01 <ReconnectThread> tid=0x9e] Unable to contact locator HostAndPort[node-07.local:10334]: java.net.ConnectException: Connection refused (Connection refused)
+[info 2022/08/10 18:43:02.880 UTC sb-locator-node-06 <ReconnectThread> tid=0x86] Delivering 0 messages queued by quorum checker
 
-[info 2022/07/28 10:56:48.260 UTC sb-locator-node-06-01 <ReconnectThread> tid=0x9e] Discovery state after looking for membership coordinator is locatorsContacted=0; findInViewResponses=0; alreadyTried=[]; registrants=[]; possibleCoordinator=null; viewId=-100; hasContactedAJoinedLocator=false; view=null; responses=[]
+[info 2022/08/10 18:43:02.880 UTC sb-locator-node-06 <ReconnectThread> tid=0x86] Peer locator is connecting to local membership services with ID 192.168.56.16(sb-locator-node-06:23888:locator)<ec>:41000
 
-[info 2022/07/28 10:56:48.261 UTC sb-locator-node-06-01 <ReconnectThread> tid=0x9e] Stopping membership services
+[info 2022/08/10 18:43:02.880 UTC sb-locator-node-06 <Geode Failure Detection Server thread 1> tid=0x11a] Started failure detection server thread on /192.168.56.16:41982.
 
-[info 2022/07/28 10:56:48.263 UTC sb-locator-node-06-01 <Geode Failure Detection Server thread 1> tid=0x182] GMSHealthMonitor server thread exiting
+[info 2022/08/10 18:43:02.883 UTC sb-locator-node-06 <ReconnectThread> tid=0x86] Discovery state after looking for membership coordinator is locatorsContacted=0; findInViewResponses=0; alreadyTried=[]; registrants=[]; p
+ossibleCoordinator=null; viewId=-100; hasContactedAJoinedLocator=false; view=null; responses=[]
 
-[warn 2022/07/28 10:56:48.264 UTC sb-locator-node-06-01 <ReconnectThread> tid=0x9e] Caught GemFireConfigException in reconnect
-org.apache.geode.GemFireConfigException: Problem configuring membership services
+[info 2022/08/10 18:43:02.883 UTC sb-locator-node-06 <ReconnectThread> tid=0x86] Stopping membership services
+
+[info 2022/08/10 18:43:02.883 UTC sb-locator-node-06 <Geode Failure Detection Server thread 1> tid=0x11a] GMSHealthMonitor server thread exiting
+
+[warn 2022/08/10 18:43:02.884 UTC sb-locator-node-06 <ReconnectThread> tid=0x86] Caught GemFireConfigException in reconnect
+org.apache.geode.GemFireConfigException: Unable to join the distributed system.  Operation either timed out, was stopped or Locator does not exist.
+        at org.apache.geode.distributed.internal.DistributionImpl.start(DistributionImpl.java:182)
+        at org.apache.geode.distributed.internal.DistributionImpl.createDistribution(DistributionImpl.java:220)
 ...
-
-[info 2022/07/28 10:56:48.264 UTC sb-locator-node-06-01 <ReconnectThread> tid=0x9e] Disconnecting old DistributedSystem to prepare for a reconnect attempt
-...
-[info 2022/07/28 11:05:18.340 UTC sb-locator-node-06-01 <Location services restart thread> tid=0x9f] quorum check: timeout waiting for responses.  2 responses received
-
-[info 2022/07/28 11:05:18.340 UTC sb-locator-node-06-01 <Location services restart thread> tid=0x9f] quorum check: contacted 2 processes with 6 member weight units.  Threshold for a quorum is 31
-
-[info 2022/07/28 11:05:48.364 UTC sb-locator-node-06-01 <Location services restart thread> tid=0x9f] beginning quorum check with GMSQuorumChecker on view View[192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000|-100] members: [192.168.56.16(sb-locator-node-06-01:14567:locator)<ec><v0>:41000, 192.168.56.17(sb-locator-node-07-01:14321:locator)<ec><v1>:41000, 192.168.56.15(sb-node-05:13230)<v2>:41000{lead}, 192.168.56.12(sb-node-02:13192)<v2>:41000, 192.168.56.14(sb-node-04:13234)<v2>:41000, 192.168.56.13(sb-node-03:13116)<v2>:41000, 192.168.56.11(sb-node-01:14114)<v2>:41000]
 
 ```
 
-Checking member log files, we see that their repeated attempts to connect to the **node-06** locator are failing.
+Running `show_cluster` shows all the members are still running.
+
+```bash
+show_cluster
+```
+
+Output:
+
+```console
+         CLUSTER: sb
+     CLUSTER_DIR: /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb
+         PRODUCT: geode
+    CLUSTER_TYPE: gemfire
+        Run Type: default
+      Deployment: VM
+Locators Running: 2/2
+ Members Running: 5/5
+         Version: 9.10.13
+  Switch Cluster: switch_rwe rwe-bundles bundle-geode-1-app-perf_test_sb-cluster-sb; switch_cluster sb
+```
+
+Checking member log files, we see that their repeated attempts to connect to the **node-06** locator are failing. The log content below shows that the membership services are failing. It logs the message, "Delivering 0 messages queued by quorum checker", which indicates that it is unable to deliver any qurom information. In the meantime, in the previous step, we saw the **node-06** locator (coordinator) has the weight sum of only 6 and indefinitely wating for member responses to establish a quorum of threshold 31.
 
 ```bash
 # Show member #1 log
@@ -1953,27 +2462,26 @@ show_log -num 1
 Output:
 
 ```console
-2022-07-28 11:22:49 INFO  InternalDistributedSystem:2535 - Disconnecting old DistributedSystem to prepare for a reconnect attempt
-2022-07-28 11:23:49 INFO  InternalDistributedSystem:2557 - Attempting to reconnect to the distributed system.  This is attempt #38.
-2022-07-28 11:23:49 INFO  LoggingProviderLoader:69 - Using org.apache.geode.logging.log4j.internal.impl.Log4jLoggingProvider from ServiceLoader for service org.apache.geode.logging.internal.spi.LoggingProvider
-2022-07-28 11:23:49 INFO  InternalDataSerializer:416 - initializing InternalDataSerializer with 11 services
-2022-07-28 11:23:49 INFO  ClusterOperationExecutors:188 - Serial Queue info : THROTTLE_PERCENT: 0.75 SERIAL_QUEUE_BYTE_LIMIT :41943040 SERIAL_QUEUE_THROTTLE :31457280 TOTAL_SERIAL_QUEUE_BYTE_LIMIT :83886080 TOTAL_SERIAL_QUEUE_THROTTLE :31457280 SERIAL_QUEUE_SIZE_LIMIT :20000 SERIAL_QUEUE_SIZE_THROTTLE :15000
-2022-07-28 11:23:49 INFO  Services:201 - Starting membership services
-2022-07-28 11:23:49 INFO  Services:575 - Established local address 192.168.56.11(sb-node-01:14114):41000
-2022-07-28 11:23:49 INFO  Services:406 - JGroups channel reinitialized (took 1ms)
-2022-07-28 11:23:49 INFO  DirectChannel:148 - GemFire P2P Listener started on /192.168.56.11:47932
-2022-07-28 11:23:49 INFO  Services:432 - Delivering 0 messages queued by quorum checker
-2022-07-28 11:23:49 INFO  Services:714 - Started failure detection server thread on /192.168.56.11:42483.
-2022-07-28 11:23:49 INFO  AdvancedSocketCreatorImpl:104 - Failed to connect to node-06.local/192.168.56.16:10334
-2022-07-28 11:23:49 INFO  Services:1226 - Unable to contact locator HostAndPort[node-06.local:10334]: java.net.ConnectException: Connection refused (Connection refused)
-2022-07-28 11:23:49 INFO  AdvancedSocketCreatorImpl:104 - Failed to connect to node-07.local/192.168.56.17:10334
-2022-07-28 11:23:49 INFO  Services:1226 - Unable to contact locator HostAndPort[node-07.local:10334]: java.net.ConnectException: Connection refused (Connection refused)
-2022-07-28 11:23:49 INFO  Services:345 - Discovery state after looking for membership coordinator is locatorsContacted=0; findInViewResponses=0; alreadyTried=[]; registrants=[]; possibleCoordinator=null; viewId=-100; hasContactedAJoinedLocator=false; view=null; responses=[]
-2022-07-28 11:23:49 INFO  Services:287 - Stopping membership services
-2022-07-28 11:23:49 INFO  Services:742 - GMSHealthMonitor server thread exiting
-2022-07-28 11:23:49 WARN  InternalDistributedSystem:2617 - Caught GemFireConfigException in reconnect
-org.apache.geode.GemFireConfigException: Problem configuring membership services
-	at org.apache.geode.distributed.internal.DistributionImpl.start(DistributionImpl.java:184) ~[geode-core-1.14.4.jar:?]
+...
+2022-08-10 18:46:17 INFO  InternalDistributedSystem:2537 - Disconnecting old DistributedSystem to prepare for a reconnect attempt
+2022-08-10 18:47:17 INFO  InternalDistributedSystem:2559 - Attempting to reconnect to the distributed system.  This is attempt #12.
+2022-08-10 18:47:18 INFO  LoggingProviderLoader:69 - Using org.apache.geode.logging.log4j.internal.impl.Log4jLoggingProvider from ServiceLoader for service org.apache.geode.logging.internal.spi.LoggingProvider
+2022-08-10 18:47:18 INFO  InternalDataSerializer:416 - initializing InternalDataSerializer with 11 services
+2022-08-10 18:47:18 INFO  ClusterOperationExecutors:187 - Serial Queue info : THROTTLE_PERCENT: 0.75 SERIAL_QUEUE_BYTE_LIMIT :41943040 SERIAL_QUEUE_THROTTLE :31457280 TOTAL_SERIAL_QUEUE_BYTE_LIMIT :83886080 TOTAL_SERIAL_QUEUE_THROTTLE :31457280 SERIAL_QUEUE_SIZE_LIMIT :20000 SERIAL_QUEUE_SIZE_THROTTLE :15000
+2022-08-10 18:47:18 INFO  Services:201 - Starting membership services
+2022-08-10 18:47:18 INFO  Services:562 - Established local address 192.168.56.11(sb-node-01:21684):41000
+2022-08-10 18:47:18 INFO  Services:398 - JGroups channel reinitialized (took 0ms)
+2022-08-10 18:47:18 INFO  DirectChannel:143 - GemFire P2P Listener started on /192.168.56.11:60172
+2022-08-10 18:47:18 INFO  Services:421 - Delivering 0 messages queued by quorum checker
+2022-08-10 18:47:18 INFO  Services:705 - Started failure detection server thread on /192.168.56.11:60633.
+2022-08-10 18:47:18 INFO  Services:330 - Discovery state after looking for membership coordinator is locatorsContacted=0; findInViewResponses=0; alreadyTried=[]; registrants=[]; possibleCoordinator=null; viewId=-100; hasContactedAJoinedLocator=false; view=null; responses=[]
+2022-08-10 18:47:18 INFO  Services:287 - Stopping membership services
+2022-08-10 18:47:18 INFO  Services:733 - GMSHealthMonitor server thread exiting
+2022-08-10 18:47:18 WARN  InternalDistributedSystem:2619 - Caught GemFireConfigException in reconnect
+org.apache.geode.GemFireConfigException: Unable to join the distributed system.  Operation either timed out, was stopped or Locator does not exist.
+	at org.apache.geode.distributed.internal.DistributionImpl.start(DistributionImpl.java:182) ~[geode-core-9.10.13.jar:?]
+	at org.apache.geode.distributed.internal.DistributionImpl.createDistribution(DistributionImpl.java:220) ~[geode-core-9.10.13.jar:?]
+...
 ```
 
 We can conclude from the log messages that the cluster will not be reinstated. We now manually restart one of the members to see if it is able to connect to the locators.
@@ -1985,23 +2493,25 @@ stop_member
 show_cluster
 # Restart the first member
 start_member
-# View the first member's llog
+# View the first member's log
 show_log
 ```
 
 Output:
 
 ```console
-2022-07-28 11:28:27 INFO  Services:406 - JGroups channel created (took 274ms)
-2022-07-28 11:28:27 INFO  DirectChannel:148 - GemFire P2P Listener started on /192.168.56.11:47416
-2022-07-28 11:28:27 INFO  Services:714 - Started failure detection server thread on /192.168.56.11:58723.
-2022-07-28 11:28:27 INFO  AdvancedSocketCreatorImpl:104 - Failed to connect to node-06.local/192.168.56.16:10334
-2022-07-28 11:28:27 INFO  Services:1226 - Unable to contact locator HostAndPort[node-06.local:10334]: java.net.ConnectException: Connection refused (Connection refused)
-2022-07-28 11:28:27 INFO  AdvancedSocketCreatorImpl:104 - Failed to connect to node-07.local/192.168.56.17:10334
-2022-07-28 11:28:27 INFO  Services:1226 - Unable to contact locator HostAndPort[node-07.local:10334]: java.net.ConnectException: Connection refused (Connection refused)
-2022-07-28 11:28:27 INFO  Services:345 - Discovery state after looking for membership coordinator is locatorsContacted=0; findInViewResponses=0; alreadyTried=[]; registrants=[]; possibleCoordinator=null; viewId=-100; hasContactedAJoinedLocator=false; view=null; responses=[]
-2022-07-28 11:28:27 INFO  Services:287 - Stopping membership services
-2022-07-28 11:28:27 INFO  Services:742 - GMSHealthMonitor server thread exiting
+...
+2022-08-10 18:51:55 INFO  InternalDataSerializer:416 - initializing InternalDataSerializer with 11 services
+2022-08-10 18:51:55 INFO  ClusterOperationExecutors:187 - Serial Queue info : THROTTLE_PERCENT: 0.75 SERIAL_QUEUE_BYTE_LIMIT :41943040 SERIAL_QUEUE_THROTTLE :31457280 TOTAL_SERIAL_QUEUE_BYTE_LIMIT :83886080 TOTAL_SERIAL_QUEUE_THROTTLE :31457280 SERIAL_QUEUE_SIZE_LIMIT :20000 SERIAL_QUEUE_SIZE_THROTTLE :15000
+2022-08-10 18:51:55 INFO  Services:201 - Starting membership services
+2022-08-10 18:51:55 INFO  UNICAST3:71 - both the regular and OOB thread pools are disabled; UNICAST3 could be removed (JGRP-2069)
+2022-08-10 18:51:55 INFO  Services:562 - Established local address 192.168.56.11(sb-node-01:23571):41000
+2022-08-10 18:51:55 INFO  Services:398 - JGroups channel created (took 236ms)
+2022-08-10 18:51:55 INFO  DirectChannel:143 - GemFire P2P Listener started on /192.168.56.11:46604
+2022-08-10 18:51:55 INFO  Services:705 - Started failure detection server thread on /192.168.56.11:59374.
+2022-08-10 18:51:55 INFO  Services:330 - Discovery state after looking for membership coordinator is locatorsContacted=0; findInViewResponses=0; alreadyTried=[]; registrants=[]; possibleCoordinator=null; viewId=-100; hasContactedAJoinedLocator=false; view=null; responses=[]
+2022-08-10 18:51:55 INFO  Services:287 - Stopping membership services
+2022-08-10 18:51:55 INFO  Services:733 - GMSHealthMonitor server thread exiting
 ```
 
 As expected, the output above shows that we are not able to restart any of the members. They fail to connect to the **node-06** locator. The only choice we have is to restart the entire cluster including the locators.
@@ -2020,7 +2530,7 @@ As expected, the output above shows that we are not able to restart any of the m
 
 ### Type 5
 
-**Data nodes isolated, locators reachable.** In this test case, we split the network to isolate data nodes but the locators are reachable by all data nodes, i.e., both Split A and Split B with locators, as shown below.
+**Data nodes isolated, locators reachable.** In this test case, we split the network to isolate data nodes but the locators are still reachable by all data nodes, i.e., both Split A and Split B with locators, as shown below.
 
 | Split | Weight   | VM Hosts                                               |
 | ----- | -------- | ------------------------------------------------------ |
@@ -2036,9 +2546,9 @@ Restart the cluster and ingest data.
 kill_cluster -all
 clean_cluster -all
 
-# To make sure node-01 gets selected as the lead member, run 'start_cluster_lead' in 'bin_sh/'
+# To make sure node-01 gets selected as the lead member, run 'start_cluster_lead_1' in 'bin_sh/'
 cd_cluster sb/bin_sh
-./start_cluster_lead
+./start_cluster_lead_1
 
 # Once the cluster is up, ingest data.
 cd_app perf_test_sb/bin_sh
@@ -2070,59 +2580,37 @@ Output:
 ```console
 Received Views
 --------------
-sb-locator-node-06-01.log:[info 2022/07/28 23:29:39.917 UTC sb-locator-node-06-01 <main> tid=0x1]
-└── 192.168.56.16(sb-locator-node-06-01:30273:locator)<ec><v0>:41000|0
-    └── 192.168.56.16(sb-locator-node-06-01:30273:locator)<ec><v0>:41000
-sb-locator-node-06-01.log:[info 2022/07/28 23:29:40.262 UTC sb-locator-node-06-01 <Geode Membership View Creator> tid=0x25]
-└── 192.168.56.16(sb-locator-node-06-01:30273:locator)<ec><v0>:41000|1
-    ├── 192.168.56.16(sb-locator-node-06-01:30273:locator)<ec><v0>:41000
-    └── 192.168.56.17(sb-locator-node-07-01:29531:locator)<ec><v1>:41000
-sb-locator-node-06-01.log:[info 2022/07/28 23:31:03.054 UTC sb-locator-node-06-01 <Geode Membership View Creator> tid=0x25]
-└── 192.168.56.16(sb-locator-node-06-01:30273:locator)<ec><v0>:41000|2
-    ├── 192.168.56.16(sb-locator-node-06-01:30273:locator)<ec><v0>:41000
-    ├── 192.168.56.17(sb-locator-node-07-01:29531:locator)<ec><v1>:41000
-    ├── 192.168.56.13(sb-node-03:28188)<v2>:41000{lead}
-    ├── 192.168.56.14(sb-node-04:28244)<v2>:41000
-    ├── 192.168.56.15(sb-node-05:28230)<v2>:41000
-    ├── 192.168.56.11(sb-node-01:22301)<v2>:41000
-    └── 192.168.56.12(sb-node-02:28254)<v2>:41000
-sb-locator-node-07-01.log:[info 2022/07/28 23:29:40.325 UTC sb-locator-node-07-01 <unicast receiver,node-07-6360> tid=0x1d]
-└── 192.168.56.16(sb-locator-node-06-01:30273:locator)<ec><v0>:41000|1
-    ├── 192.168.56.16(sb-locator-node-06-01:30273:locator)<ec><v0>:41000
-    └── 192.168.56.17(sb-locator-node-07-01:29531:locator)<ec><v1>:41000
-sb-locator-node-07-01.log:[info 2022/07/28 23:31:03.086 UTC sb-locator-node-07-01 <unicast receiver,node-07-6360> tid=0x1d]
-└── 192.168.56.16(sb-locator-node-06-01:30273:locator)<ec><v0>:41000|2
-    ├── 192.168.56.16(sb-locator-node-06-01:30273:locator)<ec><v0>:41000
-    ├── 192.168.56.17(sb-locator-node-07-01:29531:locator)<ec><v1>:41000
-    ├── 192.168.56.13(sb-node-03:28188)<v2>:41000{lead}
-    ├── 192.168.56.14(sb-node-04:28244)<v2>:41000
-    ├── 192.168.56.15(sb-node-05:28230)<v2>:41000
-    ├── 192.168.56.11(sb-node-01:22301)<v2>:41000
-    └── 192.168.56.12(sb-node-02:28254)<v2>:41000
-```
-
-```console
+sb-locator-node-06.log:[info 2022/08/10 22:19:27.729 UTC sb-locator-node-06 <main> tid=0x1]
+└── 192.168.56.16(sb-locator-node-06:29882:locator)<ec><v0>:41000|0
+    ├── 192.168.56.16(sb-locator-node-06:29882:locator)<ec><v0>:41000
 ...
-sb-locator-node-07-01.log:[info 2022/07/31 23:44:42.135 UTC sb-locator-node-07-01 <unicast receiver,node-07-28146> tid=0x1c]
-└── 192.168.56.16(sb-locator-node-06-01:26294:locator)<ec><v0>:41000|5
-    ├── 192.168.56.16(sb-locator-node-06-01:26294:locator)<ec><v0>:41000
-    ├── 192.168.56.17(sb-locator-node-07-01:24013:locator)<ec><v1>:41000
-    ├── 192.168.56.11(sb-node-01:20903)<v2>:41000{lead}
-    ├── 192.168.56.12(sb-node-02:26025)<v3>:41000
-    ├── 192.168.56.13(sb-node-03:24619)<v4>:41000
-    └── 192.168.56.14(sb-node-04:24124)<v5>:41000
-sb-locator-node-07-01.log:[info 2022/07/31 23:44:43.691 UTC sb-locator-node-07-01 <unicast receiver,node-07-28146> tid=0x1c]
-└── 192.168.56.16(sb-locator-node-06-01:26294:locator)<ec><v0>:41000|6
-    ├── 192.168.56.16(sb-locator-node-06-01:26294:locator)<ec><v0>:41000
-    ├── 192.168.56.17(sb-locator-node-07-01:24013:locator)<ec><v1>:41000
-    ├── 192.168.56.11(sb-node-01:20903)<v2>:41000{lead}
-    ├── 192.168.56.12(sb-node-02:26025)<v3>:41000
-    ├── 192.168.56.13(sb-node-03:24619)<v4>:41000
-    ├── 192.168.56.14(sb-node-04:24124)<v5>:41000
-    └── 192.168.56.15(sb-node-05:23113)<v6>:41000
+sb-locator-node-06.log: 2022/08/10 22:21:14.006 UTC
+└── 192.168.56.16(sb-locator-node-06:29882:locator)<ec><v0>:41000|6
+    ├── 192.168.56.16(sb-locator-node-06:29882:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:28906:locator)<ec><v1>:41000
+    ├── 192.168.56.11(sb-node-01:27941)<v2>:41000{lead}
+    ├── 192.168.56.12(sb-node-02:26124)<v3>:41000
+    ├── 192.168.56.13(sb-node-03:25356)<v4>:41000
+    ├── 192.168.56.14(sb-node-04:25190)<v5>:41000
+    ├── 192.168.56.15(sb-node-05:25149)<v6>:41000
+sb-locator-node-07.log: 2022/08/10 22:20:27.570 UTC
+└── 192.168.56.16(sb-locator-node-06:29882:locator)<ec><v0>:41000|1
+    ├── 192.168.56.16(sb-locator-node-06:29882:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:28906:locator)<ec><v1>:41000
+...
+sb-locator-node-07.log: 2022/08/10 22:21:14.008 UTC
+└── 192.168.56.16(sb-locator-node-06:29882:locator)<ec><v0>:41000|6
+    ├── 192.168.56.16(sb-locator-node-06:29882:locator)<ec><v0>:41000
+    ├── 192.168.56.17(sb-locator-node-07:28906:locator)<ec><v1>:41000
+    ├── 192.168.56.11(sb-node-01:27941)<v2>:41000{lead}
+    ├── 192.168.56.12(sb-node-02:26124)<v3>:41000
+    ├── 192.168.56.13(sb-node-03:25356)<v4>:41000
+    ├── 192.168.56.14(sb-node-04:25190)<v5>:41000
+    ├── 192.168.56.15(sb-node-05:25149)<v6>:41000
+Now: 2022/08/10 22:23:21 UTC
 ```
 
-Running `./show_all_suspect_node_pairs` shows that there are no suspects.
+Running `./show_all_suspect_node_pairs` shows **node-02** is a suspect for **node-03**, **node-04**, and **node-05**. The "First Logged" and "Last Logged" messages consistently show that **node-02** is a suspect (from) for **node-03**, **node-04**, and **node-05**.
 
 ```bash
 ./show_all_suspect_node_pairs
@@ -2137,7 +2625,44 @@ Not found.
 
 Suspect: node-02
 ---------------------------------------
-Not found.
+For:
+├── 192.168.56.13(sb-node-03:25356)
+├── 192.168.56.14(sb-node-04:25190)
+└── 192.168.56.15(sb-node-05:25149)
+
+First logged:
+2022/08/10 22:22:44.623 UTC
+├──  log: sb-locator-node-06.log
+├── from: 192.168.56.12(sb-node-02:26124)<v3>:41000
+├──  for: 192.168.56.13(sb-node-03:25356)<v4>:41000
+└──  msg: Member isn't responding to heartbeat requests
+2022/08/10 22:22:47.104 UTC
+├──  log: sb-locator-node-06.log
+├── from: 192.168.56.12(sb-node-02:26124)<v3>:41000
+├──  for: 192.168.56.14(sb-node-04:25190)<v5>:41000
+└──  msg: Member isn't responding to heartbeat requests
+2022/08/10 22:22:49.602 UTC
+├──  log: sb-locator-node-06.log
+├── from: 192.168.56.12(sb-node-02:26124)<v3>:41000
+├──  for: 192.168.56.15(sb-node-05:25149)<v6>:41000
+└──  msg: Member isn't responding to heartbeat requests
+
+Last logged:
+2022-08-10 22:22:49
+├──  log: sb-node-05.log
+├── from: 192.168.56.12(sb-node-02:26124)<v3>:41000
+├──  for: 192.168.56.15(sb-node-05:25149)<v6>:41000
+└──  msg: Member isn't responding to heartbeat requests
+2022-08-10 23:00:34
+├──  log: sb-node-05.log
+├── from: 192.168.56.12(sb-node-02:26124)<v3>:41000
+├──  for: 192.168.56.13(sb-node-03:25356)<v4>:41000
+└──  msg: Member isn't responding to heartbeat requests
+2022-08-10 23:00:39
+├──  log: sb-node-05.log
+├── from: 192.168.56.12(sb-node-02:26124)<v3>:41000
+├──  for: 192.168.56.14(sb-node-04:25190)<v5>:41000
+└──  msg: Member isn't responding to heartbeat requests
 
 Suspect: node-03
 ---------------------------------------
@@ -2158,52 +2683,77 @@ Not found.
 Suspect: node-07
 ---------------------------------------
 Not found.
+
+Suspect: myself
+---------------------------------------
+For:
+├── 192.168.56.13(sb-node-03:25356)
+├── 192.168.56.14(sb-node-04:25190)
+└── 192.168.56.15(sb-node-05:25149)
+
+First logged:
+2022-08-10 22:22:44
+├──  log: sb-node-02.log
+├── from: myself
+├──  for: 192.168.56.13(sb-node-03:25356)<v4>:41000
+└──  msg: Member isn't responding to heartbeat requests
+2022-08-10 22:22:47
+├──  log: sb-node-02.log
+├── from: myself
+├──  for: 192.168.56.14(sb-node-04:25190)<v5>:41000
+└──  msg: Member isn't responding to heartbeat requests
+2022-08-10 22:22:49
+├──  log: sb-node-02.log
+├── from: myself
+├──  for: 192.168.56.15(sb-node-05:25149)<v6>:41000
+└──  msg: Member isn't responding to heartbeat requests
+
+Last logged:
+2022-08-10 22:22:49
+├──  log: sb-node-02.log
+├── from: myself
+├──  for: 192.168.56.15(sb-node-05:25149)<v6>:41000
+└──  msg: Member isn't responding to heartbeat requests
+2022-08-10 23:01:02
+├──  log: sb-node-02.log
+├── from: myself
+├──  for: 192.168.56.13(sb-node-03:25356)<v4>:41000
+└──  msg: Member isn't responding to heartbeat requests
+2022-08-10 23:01:07
+├──  log: sb-node-02.log
+├── from: myself
+├──  for: 192.168.56.14(sb-node-04:25190)<v5>:41000
+└──  msg: Member isn't responding to heartbeat requests
+
+Now: 2022/08/10 23:01:09 UTC
+```
+
+Running `show_log -all` shows that every member is complaining a suspect message.
+
+```bash
+show_log -all
 ```
 
 ```console
-Suspect: node-01
----------------------------------------
-Not found.
+...
+==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-01.log <==
+2022-08-10 22:50:14 INFO  Services:1187 - received suspect message from 192.168.56.12(sb-node-02:26124)<v3>:41000 for 192.168.56.13(sb-node-03:25356)<v4>:41000: Member isn't responding to heartbeat requests
 
-Suspect: node-02
----------------------------------------
-For:
-192.168.56.13(sb-node-03:24619)
-192.168.56.14(sb-node-04:24124)
-192.168.56.15(sb-node-05:23113)
+==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-02.log <==
+2022-08-10 22:50:14 INFO  Services:1187 - received suspect message from myself for 192.168.56.13(sb-node-03:25356)<v4>:41000: Member isn't responding to heartbeat requests
+2022-08-10 22:50:14 INFO  Services:974 - No longer suspecting 192.168.56.13(sb-node-03:25356)<v4>:41000
 
-First logged:
-sb-locator-node-06-01.log:[info 2022/07/31 23:46:31.647 UTC sb-locator-node-06-01 <unicast receiver,node-06-33833> tid=0x1e] received suspect message from 192.168.56.12(sb-node-02:26025)<v3>:41000 for 192.168.56.13(sb-node-03:24619)<v4>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-06-01.log:[info 2022/07/31 23:46:34.144 UTC sb-locator-node-06-01 <unicast receiver,node-06-33833> tid=0x1e] received suspect message from 192.168.56.12(sb-node-02:26025)<v3>:41000 for 192.168.56.14(sb-node-04:24124)<v5>:41000: Member isn't responding to heartbeat requests
-sb-locator-node-06-01.log:[info 2022/07/31 23:46:36.645 UTC sb-locator-node-06-01 <unicast receiver,node-06-33833> tid=0x1e] received suspect message from 192.168.56.12(sb-node-02:26025)<v3>:41000 for 192.168.56.15(sb-node-05:23113)<v6>:41000: Member isn't responding to heartbeat requests
+==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-03.log <==
+2022-08-10 22:50:14 INFO  Services:1187 - received suspect message from 192.168.56.12(sb-node-02:26124)<v3>:41000 for 192.168.56.13(sb-node-03:25356)<v4>:41000: Member isn't responding to heartbeat requests
 
-Last logged:
-sb-node-05.log:2022-07-31 23:46:36 INFO  Services:1196 - received suspect message from 192.168.56.12(sb-node-02:26025)<v3>:41000 for 192.168.56.15(sb-node-05:23113)<v6>:41000: Member isn't responding to heartbeat requests
-sb-node-05.log:2022-07-31 23:54:41 INFO  Services:1196 - received suspect message from 192.168.56.12(sb-node-02:26025)<v3>:41000 for 192.168.56.13(sb-node-03:24619)<v4>:41000: Member isn't responding to heartbeat requests
-sb-node-05.log:2022-07-31 23:54:46 INFO  Services:1196 - received suspect message from 192.168.56.12(sb-node-02:26025)<v3>:41000 for 192.168.56.14(sb-node-04:24124)<v5>:41000: Member isn't responding to heartbeat requests
+==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-04.log <==
+2022-08-10 22:50:14 INFO  Services:1187 - received suspect message from 192.168.56.12(sb-node-02:26124)<v3>:41000 for 192.168.56.13(sb-node-03:25356)<v4>:41000: Member isn't responding to heartbeat requests
 
-Suspect: node-03
----------------------------------------
-Not found.
+==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-05.log <==
+2022-08-10 22:50:14 INFO  Services:1187 - received suspect message from 192.168.56.12(sb-node-02:26124)<v3>:41000 for 192.168.56.13(sb-node-03:25356)<v4>:41000: Member isn't responding to heartbeat requests
+```
 
-Suspect: node-04
----------------------------------------
-Not found.
-
-Suspect: node-05
----------------------------------------
-Not found.
-
-Suspect: node-06
----------------------------------------
-Not found.
-
-Suspect: node-07
----------------------------------------
-Not found.
-
-
-Running `gfsh` shows all the members in the cluster.
+Running `gfsh` shows all the members are still running in the cluster.
 
 ```bash
 gfsh
@@ -2225,7 +2775,7 @@ sb-node-05            | 192.168.56.15(sb-node-05:23113)<v6>:41000
 sb-locator-node-06-01 | 192.168.56.16(sb-locator-node-06-01:26294:locator)<ec><v0>:41000 [Coordinator]
 sb-locator-node-07-01 | 192.168.56.17(sb-locator-node-07-01:24013:locator)<ec><v1>:41000
 
-Running a region command from `gfsh` hangs indefinitely.
+Running a region command from `gfsh` hangs indefinitely, however.
 
 ```bash
 gfsh>describe region --name=/partition_persistent
@@ -2244,9 +2794,10 @@ Stuck Threads
 -------------
 
 Stuck thread(s)
-├── First: sb-node-01.log:2022-07-31 23:49:37 WARN  ThreadsMonitoringProcess:80 - There is 1 stuck thread in this node
-├── Last:  sb-node-05.log:2022-07-31 23:51:42 WARN  ThreadsMonitoringProcess:80 - There is 1 stuck thread in this node
-└── Reply:
+├── first: sb-node-01.log:2022-08-10 23:15:07 WARN  ThreadsMonitoringProcess:81 - There is 1 stuck thread in this node
+├──  last:  sb-node-05.log:2022-08-10 23:16:12 WARN  ThreadsMonitoringProcess:79 - There are 2 stuck threads in this node
+└── reply:
+Now: 2022/08/10 23:16:35 UTC
 ```
 
 Looking at member logs shows there are stuck threads.
@@ -2259,26 +2810,36 @@ Output:
 
 ```console
 ...
-022-07-28 23:40:30 WARN  ReplyProcessor21:1073 - 15 seconds have elapsed while waiting for replies: <SizeMessage$SizeResponse 745 waiting for 3 replies from [192.168.56.13(sb-node-03:28188)<v2>:41000, 192.168.56.14(sb-node-04:28244)<v2>:41000, 192.168.56.15(sb-node-05:28230)<v2>:41000]> on 192.168.56.11(sb-node-01:22301)<v2>:41000 whose current membership list is: [[192.168.56.16(sb-locator-node-06-01:30273:locator)<ec><v0>:41000, 192.168.56.17(sb-locator-node-07-01:29531:locator)<ec><v1>:41000, 192.168.56.11(sb-node-01:22301)<v2>:41000, 192.168.56.12(sb-node-02:28254)<v2>:41000, 192.168.56.13(sb-node-03:28188)<v2>:41000, 192.168.56.14(sb-node-04:28244)<v2>:41000, 192.168.56.15(sb-node-05:28230)<v2>:41000]]
-2022-07-28 23:41:01 WARN  ThreadsMonitoringProcess:70 - Thread 91 (0x5b) is stuck
-2022-07-28 23:41:01 WARN  AbstractExecutor:49 - Thread <91> (0x5b) that was executed at <28 Jul 2022 23:40:14 UTC> has been stuck for <47.183 seconds> and number of thread monitor iteration <1>
-Thread Name <Function Execution Processor3> state <TIMED_WAITING>
-Waiting on <java.util.concurrent.CountDownLatch$Sync@f1506e2>
+022-08-10 23:19:12 WARN  ThreadsMonitoringProcess:79 - There are 2 stuck threads in this node
+
+==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-05.log <==
+2022-08-10 23:19:12 WARN  ThreadsMonitoringProcess:63 - Thread 90 (0x5a) is stuck
+2022-08-10 23:19:12 WARN  AbstractExecutor:51 - Thread <90> (0x5a) that was executed at <10 Aug 2022 23:13:53 UTC> has been stuck for <319.649 seconds> and number of thread monitor iteration <5>
+Thread Name <Function Execution Processor2> state <TIMED_WAITING>
+Waiting on <java.util.concurrent.CountDownLatch$Sync@32654086>
 Executor Group <FunctionExecutionPooledExecutor>
 Monitored metric <ResourceManagerStats.numThreadsStuck>
 Thread stack:
 sun.misc.Unsafe.park(Native Method)
 java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:215)
+java.util.concurrent.locks.AbstractQueuedSynchronizer.doAcquireSharedNanos(AbstractQueuedSynchronizer.java:1037)
 ...
-2022-07-28 23:42:01 WARN  ThreadsMonitoringProcess:80 - There is 1 stuck thread in this node
-2022-07-28 23:43:01 WARN  ThreadsMonitoringProcess:70 - Thread 91 (0x5b) is stuck
-2022-07-28 23:43:01 WARN  AbstractExecutor:49 - Thread <91> (0x5b) that was executed at <28 Jul 2022 23:40:14 UTC> has been stuck for <167.183 seconds> and number of thread monitor iteration <3>
+
+2022-08-10 23:19:12 WARN  ThreadsMonitoringProcess:63 - Thread 124 (0x7c) is stuck
+2022-08-10 23:19:12 WARN  AbstractExecutor:51 - Thread <124> (0x7c) that was executed at <10 Aug 2022 23:15:10 UTC> has been stuck for <242.47 seconds> and number of thread monitor iteration <4>
 Thread Name <Function Execution Processor3> state <TIMED_WAITING>
-Waiting on <java.util.concurrent.CountDownLatch$Sync@f1506e2>
+Waiting on <java.util.concurrent.CountDownLatch$Sync@389d2bf6>
 Executor Group <FunctionExecutionPooledExecutor>
 Monitored metric <ResourceManagerStats.numThreadsStuck>
 Thread stack:
 sun.misc.Unsafe.park(Native Method)
+java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:215)
+java.util.concurrent.locks.AbstractQueuedSynchronizer.doAcquireSharedNanos(AbstractQueuedSynchronizer.java:1037)
+java.util.concurrent.locks.AbstractQueuedSynchronizer.tryAcquireSharedNanos(AbstractQueuedSynchronizer.java:1328)
+java.util.concurrent.CountDownLatch.await(CountDownLatch.java:277)
+org.apache.geode.internal.util.concurrent.StoppableCountDownLatch.await(StoppableCountDownLatch.java:72)
+org.apache.geode.distributed.internal.ReplyProcessor21.basicWait(ReplyProcessor21.java:733)
+org.apache.geode.distributed.internal.ReplyProcessor21.waitForRepliesUninterruptibly(ReplyProcessor21.java:804)
 ...
 ```
 
@@ -2292,29 +2853,43 @@ We now attempt to merge the splits.
 
 A few seconds after merging clusters, the members finally reply with the stuck thread in sight.
 
+```bash
+show_log -all
+```
+
+Output:
+
 ```console
 ...
-==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-01.log <==
-2022-07-28 23:51:45 INFO  ReplyProcessor21:728 - SizeMessage$SizeResponse wait for replies completed
+2022-08-10 23:23:12 WARN  ThreadsMonitoringProcess:79 - There are 2 stuck threads in this node
 
-==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-02.log <==
-2022-07-28 23:51:45 INFO  ReplyProcessor21:728 - SizeMessage$SizeResponse wait for replies completed
+==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-01.log <==
+2022-08-10 23:23:23 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+2022-08-10 23:23:23 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
 
 ==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-03.log <==
-2022-07-28 23:51:45 INFO  ReplyProcessor21:728 - SizeMessage$SizeResponse wait for replies completed
-
-==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-04.log <==
-2022-07-28 23:51:45 INFO  ReplyProcessor21:728 - SizeMessage$SizeResponse wait for replies completed
+2022-08-10 23:23:23 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+2022-08-10 23:23:23 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
 
 ==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-05.log <==
-2022-07-28 23:51:45 INFO  ReplyProcessor21:728 - SizeMessage$SizeResponse wait for replies completed
+2022-08-10 23:23:23 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+2022-08-10 23:23:23 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+
+==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-02.log <==
+2022-08-10 23:23:27 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+2022-08-10 23:23:27 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+
+==> /home/vagrant/rwe-bundles/bundle-geode-1-app-perf_test_sb-cluster-sb/clusters/sb/log/sb-node-04.log <==
+2022-08-10 23:23:27 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+2022-08-10 23:23:27 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
 ```
 
 `gfsh` also returns with an output. 
 
 ```console
-Name            : profile
-Data Policy     : partition
+gfsh>describe region --name=/partition_persistent
+Name            : partition_persistent
+Data Policy     : persistent partition
 Hosting Members : sb-node-01
                   sb-node-02
                   sb-node-03
@@ -2323,10 +2898,57 @@ Hosting Members : sb-node-01
 
 Non-Default Attributes Shared By Hosting Members
 
- Type  |    Name     | Value
------- | ----------- | ---------
-Region | size        | 10000
-       | data-policy | PARTITION
+  Type    |       Name       | Value
+--------- | ---------------- | --------------------
+Region    | size             | 10000
+          | data-policy      | PERSISTENT_PARTITION
+Partition | redundant-copies | 1
+```
+
+`test_group -list` shows both persistent and non-persistent data are fully inact.
+
+```bash
+./test_group -list
+```
+
+Output:
+
+```console
+...
+group: g1
+  - name: partition_persistent
+    data: Region
+    size: 10000
+    cleared: false
+  - name: replicate
+    data: Region
+    size: 10000
+    cleared: false
+  - name: replicate_persistent_overflow
+    data: Region
+    size: 10000
+    cleared: false
+  - name: partition_overflow
+    data: Region
+    size: 10000
+    cleared: false
+  - name: partition
+    data: Region
+    size: 10000
+    cleared: false
+  - name: replicate_persistent
+    data: Region
+    size: 10000
+    cleared: false
+  - name: partition_persistent_overflow
+    data: Region
+    size: 10000
+    cleared: false
+  - name: replicate_overflow
+    data: Region
+    size: 10000
+    cleared: false
+...
 ```
 
 The **node-06** locator log shows a warning message of "waiting for 5 replies" in `FunctionStreamingResultCollector`. Immediately after the merger, `FunctionStreamingResultCollector` logs "wait for replies completed."
@@ -2339,12 +2961,88 @@ Output:
 
 ```console
 ...
-[warn 2022/07/28 23:40:30.500 UTC sb-locator-node-06-01 <qtp1195670735-70> tid=0x46] 15 seconds have elapsed while waiting for replies: <FunctionStreamingResultCollector 83 waiting for 5 replies from [192.168.56.11(sb-node-01:22301)<v2>:41000, 192.168.56.12(sb-node-02:28254)<v2>:41000, 192.168.56.13(sb-node-03:28188)<v2>:41000, 192.168.56.14(sb-node-04:28244)<v2>:41000, 192.168.56.15(sb-node-05:28230)<v2>:41000]> on 192.168.56.16(sb-locator-node-06-01:30273:locator)<ec><v0>:41000 whose current membership list is: [[192.168.56.16(sb-locator-node-06-01:30273:locator)<ec><v0>:41000, 192.168.56.17(sb-locator-node-07-01:29531:locator)<ec><v1>:41000, 192.168.56.11(sb-node-01:22301)<v2>:41000, 192.168.56.12(sb-node-02:28254)<v2>:41000, 192.168.56.13(sb-node-03:28188)<v2>:41000, 192.168.56.14(sb-node-04:28244)<v2>:41000, 192.168.56.15(sb-node-05:28230)<v2>:41000]]
-
-[info 2022/07/28 23:51:45.217 UTC sb-locator-node-06-01 <qtp1195670735-70> tid=0x46] FunctionStreamingResultCollector wait for replies completed
+[warn 2022/08/10 23:15:26.308 UTC sb-locator-node-06 <qtp853972908-57> tid=0x39] 15 seconds have elapsed while waiting for replies: <FunctionStreamingResultCollector 34643 waiting for 5 replies from [192.168.56.11(sb-node-01:27941)<v2>:41000, 192.168.56.12(sb-node-02:26124)<v3>:41000, 192.168.56.13(sb-node-03:25356)<v4>:41000, 192.168.56.14(sb-node-04:25190)<v5>:41000, 192.168.56.15(sb-node-05:25149)<v6>:41000]> on 192.168.56.16(sb-locator-node-06:29882:locator)<ec><v0>:41000 whose current membership list is: [[192.168.56.16(sb-locator-node-06:29882:locator)<ec><v0>:41000, 192.168.56.17(sb-locator-node-07:28906:locator)<ec><v1>:41000, 192.168.56.11(sb-node-01:27941)<v2>:41000, 192.168.56.12(sb-node-02:26124)<v3>:41000, 192.168.56.13(sb-node-03:25356)<v4>:41000, 192.168.56.14(sb-node-04:25190)<v5>:41000, 192.168.56.15(sb-node-05:25149)<v6>:41000]]
+...
+[info 2022/08/10 23:23:27.169 UTC sb-locator-node-06 <qtp853972908-57> tid=0x39] FunctionStreamingResultCollector wait for replies completed
+...
 ```
 
-In the mean time, Pulse continues to see all the members as if nothing happened.
+Running `show_stuck_threads` shows that the stuck thread replies are completed.
+
+```bash
+./show_stuck_threads
+```
+
+Output:
+
+```console
+Stuck Threads
+-------------
+
+sb-locator-node-06.log
+├── first:
+├──  last:
+└── reply: sb-locator-node-06.log:[info 2022/08/10 23:23:27.169 UTC sb-locator-node-06 <qtp853972908-58> tid=0x3a] FunctionStreamingResultCollector wait for replies completed
+
+sb-locator-node-06.log
+├── first:
+├──  last:
+└── reply: sb-locator-node-06.log:[info 2022/08/10 23:23:27.169 UTC sb-locator-node-06 <qtp853972908-57> tid=0x39] FunctionStreamingResultCollector wait for replies completed
+
+sb-node-01.log
+├── first: sb-node-01.log:2022-08-10 23:16:07 WARN  ThreadsMonitoringProcess:79 - There are 2 stuck threads in this node
+├──  last:  sb-node-01.log:2022-08-10 23:23:07 WARN  ThreadsMonitoringProcess:79 - There are 2 stuck threads in this node
+└── reply: sb-node-01.log:2022-08-10 23:23:23 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+
+sb-node-01.log
+├── first:
+├──  last:
+└── reply: sb-node-01.log:2022-08-10 23:23:23 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+
+sb-node-02.log
+├── first: sb-node-02.log:2022-08-10 23:16:08 WARN  ThreadsMonitoringProcess:79 - There are 2 stuck threads in this node
+├──  last:  sb-node-02.log:2022-08-10 23:23:08 WARN  ThreadsMonitoringProcess:79 - There are 2 stuck threads in this node
+└── reply: sb-node-02.log:2022-08-10 23:23:27 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+
+sb-node-02.log
+├── first:
+├──  last:
+└── reply: sb-node-02.log:2022-08-10 23:23:27 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+
+sb-node-03.log
+├── first: sb-node-03.log:2022-08-10 23:16:10 WARN  ThreadsMonitoringProcess:79 - There are 2 stuck threads in this node
+├──  last:  sb-node-03.log:2022-08-10 23:23:10 WARN  ThreadsMonitoringProcess:79 - There are 2 stuck threads in this node
+└── reply: sb-node-03.log:2022-08-10 23:23:23 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+
+sb-node-03.log
+├── first:
+├──  last:
+└── reply: sb-node-03.log:2022-08-10 23:23:23 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+
+sb-node-04.log
+├── first: sb-node-04.log:2022-08-10 23:16:12 WARN  ThreadsMonitoringProcess:79 - There are 2 stuck threads in this node
+├──  last:  sb-node-04.log:2022-08-10 23:23:12 WARN  ThreadsMonitoringProcess:79 - There are 2 stuck threads in this node
+└── reply: sb-node-04.log:2022-08-10 23:23:27 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+
+sb-node-04.log
+├── first:
+├──  last:
+└── reply: sb-node-04.log:2022-08-10 23:23:27 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+
+sb-node-05.log
+├── first: sb-node-05.log:2022-08-10 23:16:12 WARN  ThreadsMonitoringProcess:79 - There are 2 stuck threads in this node
+├──  last:  sb-node-05.log:2022-08-10 23:23:12 WARN  ThreadsMonitoringProcess:79 - There are 2 stuck threads in this node
+└── reply: sb-node-05.log:2022-08-10 23:23:23 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+
+sb-node-05.log
+├── first:
+├──  last:
+└── reply: sb-node-05.log:2022-08-10 23:23:23 INFO  ReplyProcessor21:736 - SizeMessage$SizeResponse wait for replies completed
+
+Now: 2022/08/10 23:36:40 UTC
+```
+
+In the meantime, Pulse continues to see all the members as if nothing happened.
 
 #### Type 5 Summary
 
@@ -2354,28 +3052,28 @@ In the mean time, Pulse continues to see all the members as if nothing happened.
 - We then used `gfsh` to execute a `describe region` command, which blocked indefinitely.
 - All member log files show that one (1) thread is stuck. The locator also recorded that it is waiting for replies from all members.
 - After waiting for over 11 minutes, we merged the splits.
-- A few seconds later, `gfsh` finally returned with results. The member log files also recorded replies and the stuck thread is no longer in sight. The locator log file showed the replies are complete.
+- A few seconds later, `gfsh` finally returned with results. The member log files also recorded replies and the stuck thread is no longer in sight. The locator log file also showed the replies are complete.
 - The cluster continues to run without any issues. All data is recovered.
-- In this test case, we found that GemFire solely relies on locators to detect network partitions. If members split but the locators are still reachable by all members then GemFire never declares a network partition. Only when a client performs GemFire operations, we are able to see warning messages."
+- In this test case, we found that Geode/GemFire solely relies on locators to detect network partitions. If members split but the locators are still reachable by all members then Geode/GemFire never declares a network partition. Only when a client performs Geode/GemFire operations, we are able to see warning messages.
 - **Troubleshooting Tip:** Look for "stuck thread" warning messages and hanging clients.
 
 ---
 
 ## Test Results
 
-| Recovery                                          | Type 1 | Type 2 | Type 3 | Type 4 | Type 5  |
+| Recovery                                          | Type 0 | Type 1 | Type 2 | Type 3 | Type 4 | Type 5  |
 | ------------------------------------------------- | ------ | ------ | ------ | ------ | ------- | 
-| Persistent data recovered?                        | yes    | yes    | no     | no     | yes     |
-| Non-persistent data recovered?                    | no     | no     | no     | no     | yes     |
-| Cluster auto-restarted after merger?              | yes    | yes    | no     | no     | yes     |
-| Network partition declared?                       | yes    | yes    | yes    | yes    | no      |
-| Cluster quorum determined properly?               | yes    | yes    | no     | no     | no      |
-| Clients able to connect during network partition? | no     | no     | no     | no     | no      |
-| `gfsh` able to connect during network partition?  | no     | no     | no     | no     | yes     |
-| `gfsh` able to connect after auto-restart?        | yes    | no     | no     | no     | yes     |
-| Clients able to connect any of the splits?        | no     | no     | no     | no     | yes (1) |
-| Clients able to connect after merger?             | yes    | yes    | no     | no     | yes     |
-| Manual restart required?                          | no     | no     | yes    | yes    | no      |
+| Persistent data recovered?                        | yes    | yes    | yes    | no     | no     | yes     |
+| Non-persistent data recovered?                    | yes    | no     | no     | no     | no     | yes     |
+| Cluster auto-restarted after merger?              | no     | yes    | yes    | no     | no     | yes     |
+| Network partition declared?                       | yes    | yes    | yes    | yes    | yes    | no      |
+| Cluster quorum determined properly?               | yes    | yes    | yes    | no     | no     | no      |
+| Clients able to connect during network partition? | yes    | no     | no     | no     | no     | no      |
+| `gfsh` able to connect during network partition?  | n/a    | no     | no     | no     | no     | yes     |
+| `gfsh` able to connect after auto-restart?        | n/a    | yes    | no     | no     | no     | yes     |
+| Clients able to connect any of the splits?        | yes    | no     | no     | no     | no     | yes (1) |
+| Clients able to connect after merger?             | yes    | yes    | yes    | no     | no     | yes     |
+| Manual restart required?                          | no     | no     | no     | yes    | yes    | no      |
 
 (1) Clients are able to connect but region operations get stuck indefinitely until the merger completes.
 
@@ -2395,25 +3093,32 @@ Based on our findings, we can put together a flow chart showing the steps involv
 
 We can use the [Test Results](#test-results) to create a prognosis for each network partition type as follows.
 
-| Recovery                                               | Type 1 | Type 2 | Type 3 | Type 4 | Type 5  |
-| ------------------------------------------------------ | ------ | ------ | ------ | ------ | ------- | 
-| Persistent data recoverable?                           | yes    | yes    | no     | no     | yes     |
-| Non-persistent data recoverable?                       | no     | no     | no     | no     | yes     |
-| Cluster auto-restart upon resolving network issues?    | yes    | yes    | no     | no     | yes     |
-| Will GemFire declare a network partition?              | yes    | yes    | yes    | yes    | no      |
-| Will cluster quorum determine properly?                | yes    | yes    | no     | no     | no      |
-| Clients able to connect during network partition?      | no     | no     | no     | no     | no      |
-| `gfsh` able to connect during network partition?       | yes    | no     | no     | no     | yes     |
-| `gfsh` able to connect after auto-restart?             | yes    | no     | no     | no     | yes     |
-| Clients able to connect any of the network partitions? | no     | no     | no     | no     | yes (1) |
-| Clients able to connect after network resolved?        | yes    | yes    | no     | no     | yes     |
-| Manual cluster restart required?                       | no     | no     | yes    | yes    | no      |
+| Recovery                                               | Type 0 | Type 1 | Type 2 | Type 3 | Type 4 | Type 5 |
+| ------------------------------------------------------ | ------ | ------ | ------ | ------ | ------ | ------ |
+| Persistent data recoverable?                           | yes    | yes    | yes    | no     | no     | yes    |
+| Non-persistent data recoverable?                       | yes    | no     | no     | no     | no     | yes    |
+| Cluster auto-restart upon resolving network issues?    | no     | yes    | yes    | no     | no     | yes    |
+| Will GemFire declare a network partition?              | yes    | yes    | yes    | yes    | yes    | no     |
+| Will cluster quorum determine properly?                | yes    | yes    | yes    | no     | no     | no     |
+| Clients able to connect during network partition?      | yes    | no     | no     | no     | no     | no     |
+| `gfsh` able to connect during network partition?       | yes    | yes    | no     | no     | no     | yes    |
+| `gfsh` able to connect after auto-restart?             | n/a    | yes    | no     | no     | no     | yes    |
+| Clients able to connect any of the network partitions? | yes    | no     | no     | no     | no     | yes    |
+| Clients able perform region operations?                | yes    | no     | no     | no     | no     | no     |
+| Clients able to connect after network resolved?        | yes    | yes    | yes    | no     | no     | yes    |
+| Manual cluster restart required?                       | no     | no     | no     | yes    | yes    | no     |
 
 ---
 
 ### Recovery Guidelines
 
 Based on the test results, we can provide guidelines for recovering from each network partition type.
+
+#### Type 0
+
+1. Fix network issues if nay.
+1. Restart the isolated member.
+1. Rebalance the cluster.
 
 #### Type 1, Type 2
 
@@ -2443,7 +3148,7 @@ Based on the test results, we can provide guidelines for recovering from each ne
 
 1. Fix network issues if any.
 1. Check each member's CPU usage and available system resources.
-1. Gracefully stop members (not locators) in Split A.
+1. Gracefully stop data nodes (not locators) in Split A.
 1. Increase system resources for those members as needed and restart them.
 1. Identify members that ran out of system resources.
 1. Increase system resources as needed for those members.

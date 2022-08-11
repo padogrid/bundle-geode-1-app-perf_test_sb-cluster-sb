@@ -17,7 +17,7 @@ NAME
    $EXECUTABLE - Display cluster views in chronological order
 
 SYNOPSIS
-   ./$EXECUTABLE [-type received | sending ] [-all] [-locator] [-member] [-short] [-?]
+   ./$EXECUTABLE [-type received | sending ] [-all] [-locator] [-member] [-long] [-?]
 
 DESRIPTION
    Displays cluster views in chronological order. The cluster views are extracted from the locator logs only.
@@ -37,8 +37,8 @@ OPTIONS
    -all
              If specified, then searches all log files.
 
-   -short
-             If specified, displays condensed views.
+   -long
+             If specified, displays unfiltered log messages
 
 DEFAULT:
    ./$EXECUTABLE -type received -locator
@@ -87,7 +87,7 @@ while IFS= read -r line; do
    log_file=$(echo $line | sed 's/:.*$//')
    timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER-.*$//"  -e 's/info.*//i')
    if [[ "$line" == *"$FILTER2"* ]]; then
-      if [ "$SHORT" == "true" ]; then
+      if [ "$LONG" != "true" ]; then
          echo -e "$log_file: ${CBrownOrange}$timestamp${CNone}"
       else
          echo $line | sed "s/$FILTER2.*$//"
@@ -96,7 +96,7 @@ while IFS= read -r line; do
       echo "$TLel $FILTER2"
       members=$line
    else
-      if [ "$SHORT" == "true" ]; then
+      if [ "$LONG" != "true" ]; then
          echo -e "$log_file: ${CBrownOrange}$timestamp${CNone}"
       else
         echo $line | sed "s/$FILTER.*$//"
