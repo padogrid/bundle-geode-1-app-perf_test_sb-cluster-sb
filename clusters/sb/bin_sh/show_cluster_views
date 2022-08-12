@@ -108,43 +108,71 @@ while IFS= read -r line; do
       members=$(echo $line | sed 's/^.*members://')
    fi
 
-   # Determine member count
-
-   # Print members
+   # Determine active member count
+   active_members=$(echo $members | sed -e 's/crashed:.*$//' -e 's/shutdown:.*$//')
    count=0
-   is_crashed="false"
-   is_shutdown="false"
    for i in $members; do
-      if [ "$is_crashed" != "true" ] && [ "$i" != "crashed:" ]; then
-         let count=count+1
-      fi
-      if [ "$is_shutdown" != "true" ] && [ "$i" != "shutdown:" ]; then
-         let count=count+1
-      fi
+      let count=count+1
    done
    total=$count
 
+   # Determine crashed  member count
+   crashed_members=$(echo $members | grep 'crashed:' | sed -e 's/^.*crashed://' -e 's/shutdown:.*$//')
+   crashed_count=0
+   for i in $crashed_members; do
+      let crashed_count=crashed_count+1
+   done
+   total_crashed=$crashed_count
+
+   # Determine shutdown member count
+   shutdown_members=$(echo $members | grep 'shutdown' | sed -e 's/^.*shutdown://' -e 's/crashed:.*$//')
+   shutdown_count=0
+   for i in $shutdown_members; do
+      let shutdown_count=shutdown_count+1
+   done
+   total_shutdown=$shutdown_count
+
+   # Print active members
    count=0
-   is_crashed="false"
-   for i in $members; do
+   for i in $active_members; do
       i=$(echo $i | sed 's/,//')
-      if [ "$is_crashed" == "true" ]; then
+      let count=count+1
+      if [ $count -lt $total ]; then
          echo "    $TTee $i"
-      elif [ "$i" == "crashed:" ]; then
-         echo -e "    ${CError}$i${CNone}"
-         is_crashed="true"
-      elif [ "$i" == "shutdown:" ]; then
-         echo -e "    ${CError}$i${CNone}"
-         is_shutdown="true"
       else
+        echo "    $TLel $i"
+      fi
+   done
+
+   # Print crashed members
+   if [ $crashed_count -gt 0 ]; then
+      echo -e "    ${CError}crashed:${CNone} $crashed_count"
+      count=0
+      for i in $crashed_members; do
+         i=$(echo $i | sed 's/,//')
          let count=count+1
-         if [ $count -lt $total ]; then
+         if [ $count -lt $total_crashed ]; then
             echo "    $TTee $i"
          else
             echo "    $TLel $i"
          fi
-      fi
-   done
+      done
+   fi
+
+   # Print shutdown members
+   if [ $shutdown_count -gt 0 ]; then
+      echo -e "    ${CError}shutdown:${CNone} $shutdown_count"
+      count=0
+      for i in $shutdown_members; do
+         i=$(echo $i | sed 's/,//')
+        let count=count+1
+        if [ $count -lt $total_shutdown ]; then
+           echo "    $TTee $i"
+        else
+           echo "    $TLel $i"
+        fi
+      done
+   fi
 
 #   grep "$line" *locator*.log | awk '!a[$0]++'
 done < "$TMP_FILE"

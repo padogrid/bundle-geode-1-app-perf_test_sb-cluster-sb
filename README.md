@@ -552,7 +552,7 @@ From `pnode.local`, run `split_cluster` as follows:
 
 ```console
 switch_cluster sb/bin_sh
-./split_cluster -type 1
+./split_cluster -type 0
 ```
 
 Running `show_membership_service_failure` shows no failures.
@@ -3062,7 +3062,7 @@ In the meantime, Pulse continues to see all the members as if nothing happened.
 ## Test Results
 
 | Recovery                                          | Type 0 | Type 1 | Type 2 | Type 3 | Type 4 | Type 5  |
-| ------------------------------------------------- | ------ | ------ | ------ | ------ | ------- | 
+| ------------------------------------------------- | ------ | ------ | ------ | ------ | ------ | ------- |
 | Persistent data recovered?                        | yes    | yes    | yes    | no     | no     | yes     |
 | Non-persistent data recovered?                    | yes    | no     | no     | no     | no     | yes     |
 | Cluster auto-restarted after merger?              | no     | yes    | yes    | no     | no     | yes     |
@@ -3098,7 +3098,7 @@ We can use the [Test Results](#test-results) to create a prognosis for each netw
 | Persistent data recoverable?                           | yes    | yes    | yes    | no     | no     | yes    |
 | Non-persistent data recoverable?                       | yes    | no     | no     | no     | no     | yes    |
 | Cluster auto-restart upon resolving network issues?    | no     | yes    | yes    | no     | no     | yes    |
-| Will GemFire declare a network partition?              | yes    | yes    | yes    | yes    | yes    | no     |
+| Will GemFire declare a network partition?              | no     | yes    | yes    | yes    | yes    | no     |
 | Will cluster quorum determine properly?                | yes    | yes    | yes    | no     | no     | no     |
 | Clients able to connect during network partition?      | yes    | no     | no     | no     | no     | no     |
 | `gfsh` able to connect during network partition?       | yes    | yes    | no     | no     | no     | yes    |
