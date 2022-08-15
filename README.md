@@ -991,6 +991,8 @@ From `pnode.local`, monitor the log files to see the cluster being split into tw
 ./show_cluster_views -long
 ```
 
+Output:
+
 ```console
 ...
 sb-locator-node-07-01.log:[info 2022/07/18 23:25:54.892 UTC sb-locator-node-07-01 <unicast receiver,node-07-45188> tid=0x1e]
@@ -1483,7 +1485,7 @@ Eviction | eviction-action    | overflow-to-disk
 Let's try merging the splits with the Split A members still running.
 
 ```bash
-./merger_cluster
+./merge_cluster
 ```
 
 Now take a look at the Split A member log files. We can see from the output below that these members are not allowed to connect to the cluster with the revoked data stores. In order for them to join the cluster, their disk stores must be removed.
@@ -2052,7 +2054,7 @@ Last logged:
 Now: 2022/08/10 18:04:53 UTC
 ```
 
-Running `show_membership_service_failure` clearly shows the state of the cluster. The **node-06** locator coordinator has declared a network partition with the Split B members listed. Unlike `show_all_suspect_node_pairs`, it accurately determined all the unreachable members. The `show_all_suspect_node_pairs` discrepency is due to the incomplete log messages being recorded in the log files while the cluster is experiencing the network failure. It is important to note that we must use all the available diagnostic tools before deriving a conclusion.
+Running `show_membership_service_failure` clearly shows the state of the cluster. The **node-06** locator coordinator has declared a network partition with the Split B members listed. Unlike `show_all_suspect_node_pairs`, it accurately determined all the unreachable members. The `show_all_suspect_node_pairs` discrepency is due to the incomplete log messages being recorded in the log files while the cluster is experiencing the network failure. It is important to note that we must use all the available diagnostic tools before arriving to a conclusion.
 
 ```bash
 ./show_membership_service_failure
@@ -2522,7 +2524,7 @@ As expected, the output above shows that we are not able to restart any of the m
 - We saw Pulse immediately goes out of commission.
 - We saw both locators as suspects for all members.
 - We saw the cluster views recorded by the locators do not represent the current state of the cluster.
-- But the locators clearly declared a network partition by recoring that all members are not reachable. 
+- But the locators clearly declared a network partition by recording that all members are not reachable. 
 - Merging partitioned clusters did not reinstate the cluster. Both locators and members are unable to connect to each other.
 - The cluster must be manually restarted.
 
@@ -3069,8 +3071,8 @@ In the meantime, Pulse continues to see all the members as if nothing happened.
 | Network partition declared?                       | yes    | yes    | yes    | yes    | yes    | no      |
 | Cluster quorum determined properly?               | yes    | yes    | yes    | no     | no     | no      |
 | Clients able to connect during network partition? | yes    | no     | no     | no     | no     | no      |
-| `gfsh` able to connect during network partition?  | n/a    | no     | no     | no     | no     | yes     |
-| `gfsh` able to connect after auto-restart?        | n/a    | yes    | no     | no     | no     | yes     |
+| `gfsh` able to connect during network partition?  | n/a    | no     | yes    | no     | no     | yes     |
+| `gfsh` able to connect after auto-restart?        | n/a    | yes    | yes    | no     | no     | yes     |
 | Clients able to connect any of the splits?        | yes    | no     | no     | no     | no     | yes (1) |
 | Clients able to connect after merger?             | yes    | yes    | yes    | no     | no     | yes     |
 | Manual restart required?                          | no     | no     | no     | yes    | yes    | no      |
@@ -3101,7 +3103,7 @@ We can use the [Test Results](#test-results) to create a prognosis for each netw
 | Will GemFire declare a network partition?              | no     | yes    | yes    | yes    | yes    | no     |
 | Will cluster quorum determine properly?                | yes    | yes    | yes    | no     | no     | no     |
 | Clients able to connect during network partition?      | yes    | no     | no     | no     | no     | no     |
-| `gfsh` able to connect during network partition?       | yes    | yes    | no     | no     | no     | yes    |
+| `gfsh` able to connect during network partition?       | yes    | yes    | yes    | no     | no     | yes    |
 | `gfsh` able to connect after auto-restart?             | n/a    | yes    | no     | no     | no     | yes    |
 | Clients able to connect any of the network partitions? | yes    | no     | no     | no     | no     | yes    |
 | Clients able perform region operations?                | yes    | no     | no     | no     | no     | no     |
@@ -3116,7 +3118,7 @@ Based on the test results, we can provide guidelines for recovering from each ne
 
 #### Type 0
 
-1. Fix network issues if nay.
+1. Fix network issues if any.
 1. Restart the isolated member.
 1. Rebalance the cluster.
 

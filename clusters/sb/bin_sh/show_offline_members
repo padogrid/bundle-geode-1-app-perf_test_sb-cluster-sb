@@ -59,7 +59,7 @@ while IFS= read -r line; do
       prev_timestamp="$timestamp"
    fi
    if [[ "$line" == *"$FILTER1"* ]]; then
-      timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER-.*$//"  -e 's/info.*//i')
+      timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER.*$//"  -e 's/info.*//i')
       region=$(echo $line | sed -e 's/^.*region //' -e 's/:.*$//')
       #if [ "$log_file" != "$prev_logfile" ] && [ "$timestamp" != "$prev_timestamp" ]; then
       if [ "$timestamp" != "$prev_timestamp" ]; then

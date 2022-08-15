@@ -42,7 +42,7 @@ prev_log_file=""
 while IFS= read -r line; do
   members=""
   log_file=$(echo $line | sed 's/:.*$//')
-  timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER-.*$//"  -e 's/info.*//i')
+  timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER.*$//"  -e 's/info.*//i')
   if [[ "$line" == *"system restarted"* ]]; then
      message="system restarted"
      CColor=$CGo

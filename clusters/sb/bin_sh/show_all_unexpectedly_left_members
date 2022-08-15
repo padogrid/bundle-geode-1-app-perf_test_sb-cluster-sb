@@ -40,8 +40,8 @@ prev_log_file=""
 while IFS= read -r line; do
   log_file=$(echo $line | sed 's/:.*$//')
   timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e 's/UTC.*$/UTC/' -e 's/ INFO.*$//')
-  #timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER-.*$//"  -e 's/info.*//i')
-  #timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER-.*$//")
+  #timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER.*$//"  -e 's/info.*//i')
+  #timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER.*$//")
   member=$(echo $line | sed -e 's/^.*Member at//' -e 's/ unexpectedly.*$//')
   if [ "$prev_log_file" != "$log_file" ]; then
      echo "$log_file"

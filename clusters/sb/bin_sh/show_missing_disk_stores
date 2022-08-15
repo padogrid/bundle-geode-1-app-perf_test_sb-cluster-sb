@@ -55,8 +55,9 @@ while IFS= read -r line; do
       echo "$log_file"
    fi
    if [[ "$line" == *"$FILTER1"* ]]; then
-      timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER-.*$//"  -e 's/info.*//i')
-      region=$(echo $line | sed -e 's/^.*Region //' -e 's/has potentially stale data.*$//')
+      timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER.*$//"  -e 's/info.*//i')
+      region=$(echo $line | grep Region | sed -e 's/^.* Region //' -e 's/has potentially stale data.*$//')
+      buckets=$(echo $line | grep Buckets | sed -e 's/^.*Buckets //' -e 's/\].*$//')
       echo "$TTee $timestamp"
    else
       case $line_count in
@@ -67,14 +68,17 @@ while IFS= read -r line; do
          name=$(echo $line | sed 's/.*Name: //')
          echo "$TBar   $TTee $name"
          if [ "$region" != "" ]; then
-            echo "$TBar   $TBar   $TTee $region"
+            echo "$TBar   $TBar   $TTee  region: $region"
          fi
-         echo "$TBar   $TBar   $TTee $diskstore_id"
+         echo "$TBar   $TBar   $TTee      id: $diskstore_id"
+         if [ "$buckets" != "" ]; then
+            echo "$TBar   $TBar   $TTee buckets: $buckets"
+         fi
          ;;
       4)
          location=$(echo $line | sed 's/.*Location: //')
          address=$(echo $location | sed -e 's/:.*$//' -e 's/\///g')
-         echo "$TBar   $TBar   $TLel $address"
+         echo "$TBar   $TBar   $TLel    addr: $address"
          ;;
       *)
          if [ $line_count -gt 5 ]; then
@@ -82,16 +86,19 @@ while IFS= read -r line; do
             name=$(echo $line | grep 'Name:' | sed 's/.*Name: //')
             offline_location=$(echo $line | grep 'Location:' | sed 's/.*Location: //')
             offline_address=$(echo $offline_location | sed -e 's/:.*$//' -e 's/\///g')
+            buckets=$(echo $line | grep 'Buckets:' | sed -e 's/^.*Buckets: //')
             end_line=$(echo $line | grep "$FILTER2")
             if [ "$end_line" != "" ]; then
                line_count=0
             elif [ "$offline_disk_store_id" != "" ]; then
                echo -e "$TBar   $TTee ${CError}offline${CNone}"
-               echo "$TBar   $TBar   $TTee $offline_disk_store_id"
+               echo "$TBar   $TBar   $TTee      id: $offline_disk_store_id"
             elif [ "$name" != "" ]; then
-               echo "$TBar   $TBar   $TTee $name"
+               echo "$TBar   $TBar   $TTee    name: $name"
             elif [ "$offline_address" != "" ]; then
-               echo "$TBar   $TBar   $TTee $offline_address"
+               echo "$TBar   $TBar   $TTee    addr: $offline_address"
+            elif [ "$buckets" != "" ]; then
+               echo "$TBar   $TBar   $TTee buckets: $buckets"
             fi
          fi
          ;;

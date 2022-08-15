@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
+. $SCRIPT_DIR/.addonenv.sh
+
+BASE_DIR="$(dirname "$SCRIPT_DIR")"
+
+EXECUTABLE="`basename $0`"
+
+if [ "$HELP" == "true" ]; then
+cat <<EOF
+
+WORKSPACE
+   $PADOGRID_WORKSPACE
+
+NAME
+   $EXECUTABLE - Iteratively revoke all missing data stores
+
+SYNOPSIS
+   ./$EXECUTABLE [-?]
+
+DESRIPTION
+   Iteratively revokes all missing data stores.
+
+DEFAULT:
+   ./$EXECUTABLE
+
+EOF
+exit
+fi
+
+TIMESTAMP=`date +%y%m%d-%H%M%S`
+TMP_FILE1="/tmp/padogrid-1-$EXECUTABLE-$TIMESTAMP.log"
+if [ -f $TMP_FILE1 ]; then
+   rm $TMP_FILE1
+fi
+
+
+locator_endpoint="node-06.local[10334]"
+gfsh -e "connect --locator=$locator_endpoint" -e "show missing-disk-stores" | sed '1,/-----------/d' > $TMP_FILE1
+while IFS= read -r line; do
+   if [ "$line" == "" ]; then
+      break;
+   else
+      id=$(echo $line | awk '{print $1}')
+      echo Revoking $id...
+      gfsh -e "connect --locator=$locator_endpoint" -e "revoke  missing-disk-store --id=$id"
+   fi
+done < "$TMP_FILE1"
+unset IFS
+rm $TMP_FILE1

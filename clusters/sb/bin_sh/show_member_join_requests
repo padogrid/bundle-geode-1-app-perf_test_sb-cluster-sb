@@ -39,7 +39,7 @@ echo "---------------------"
 prev_log_file=""
 while IFS= read -r line; do
   log_file=$(echo $line | sed 's/:.*$//')
-  timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER-.*$//"  -e 's/info.*//i')
+  timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER.*$//"  -e 's/info.*//i')
   member=$(echo $line | sed 's/^.*join request from //')
   if [ "$prev_log_file" != "$log_file" ]; then
      echo "$log_file"

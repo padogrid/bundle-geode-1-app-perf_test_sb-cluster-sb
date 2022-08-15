@@ -83,9 +83,16 @@ else
    echo "Received Views"
    echo "--------------"
 fi 
+log_file=""
+prev_log_file=$log_file
 while IFS= read -r line; do
    log_file=$(echo $line | sed 's/:.*$//')
-   timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER-.*$//"  -e 's/info.*//i')
+   timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER.*$//"  -e 's/info.*//i')
+   timestamp=$(echo $timestamp | sed -e 's/\[warn //')
+   if [ "$prev_log_file" != "$log_file" ]; then
+      echo ""
+      prev_log_file=$log_file
+   fi
    if [[ "$line" == *"$FILTER2"* ]]; then
       if [ "$LONG" != "true" ]; then
          echo -e "$log_file: ${CBrownOrange}$timestamp${CNone}"
@@ -93,7 +100,7 @@ while IFS= read -r line; do
          echo $line | sed "s/$FILTER2.*$//"
       fi
       line=$(echo $line | sed -e "s/^.*${FILTER2}: //" -e "s/\[//g" -e "s/\]//g")
-      echo "$TLel $FILTER2"
+      echo "$TTee $FILTER2"
       members=$line
    else
       if [ "$LONG" != "true" ]; then
@@ -104,7 +111,7 @@ while IFS= read -r line; do
       line=$(echo $line | sed -e "s/^.*${FILTER}: View//" -e "s/\[//g" -e "s/\]//g")
       line=$(echo $line | sed -e "s/^.*$FILTER View//" -e "s/\[//g" -e "s/\]//g")
       member=$(echo $line | sed 's/members: .*$//')
-      echo "$TLel $member"
+      echo "$TTee coordinator: $member"
       members=$(echo $line | sed 's/^.*members://')
    fi
 
@@ -134,15 +141,28 @@ while IFS= read -r line; do
 
    # Print active members
    count=0
+   weight_sum=0
    for i in $active_members; do
       i=$(echo $i | sed 's/,//')
       let count=count+1
-      if [ $count -lt $total ]; then
-         echo "    $TTee $i"
+      addr=$(echo $i | sed 's/^.* //')
+      if [ "$(echo $i | grep locator)" != "" ]; then
+         member_type="locator"
+         let weight_sum=weight_sum+3
+      elif [ "$(echo $i | grep lead)" != "" ]; then
+         member_type="lead"
+         let weight_sum=weight_sum+15
       else
-        echo "    $TLel $i"
+         member_type="member"
+         let weight_sum=weight_sum+10
+      fi
+      if [ $count -lt $total ]; then
+         echo "$TBar   $TTee $i"
+      else
+         echo "$TBar   $TLel $i"
       fi
    done
+   echo "$TLel weight: $weight_sum"
 
    # Print crashed members
    if [ $crashed_count -gt 0 ]; then
@@ -180,5 +200,6 @@ unset IFS
 rm $TMP_FILE
 popd > /dev/null 2>&1
 
+echo ""
 echo -e "Now: ${CBrownOrange}$(date '+%Y/%m/%d %H:%M:%S %Z')${CNone}"
 echo ""

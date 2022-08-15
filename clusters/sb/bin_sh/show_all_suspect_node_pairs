@@ -110,7 +110,7 @@ for SUSPECT_NODE in $SUSPECT_NODES; do
      if [ "$LONG" != "true" ]; then
         while IFS= read -r line; do
           log_file=$(echo $line | sed 's/:.*$//')
-          timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER-.*$//"  -e 's/info.*//i')
+          timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER.*$//"  -e 's/info.*//i')
           from=$(echo $line | sed -e 's/^.*from //' -e 's/ for .*$//')
           for_before=$(echo $line | sed -e 's/^.*for //')
           for=$(echo $for_before | sed -e 's/: .*$//');
@@ -134,7 +134,7 @@ for SUSPECT_NODE in $SUSPECT_NODES; do
      if [ "$LONG" != "true" ]; then
         while IFS= read -r line; do
           log_file=$(echo $line | sed 's/:.*$//')
-          timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER-.*$//"  -e 's/info.*//i')
+          timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER.*$//"  -e 's/info.*//i')
           from=$(echo $line | sed -e 's/^.*from //' -e 's/ for .*$//')
           for_before=$(echo $line | sed -e 's/^.*for //')
           for=$(echo $for_before | sed -e 's/: .*$//');
