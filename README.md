@@ -51,6 +51,12 @@ This bundle provides scripts, configuration files, and apps for creating a Geode
   - [Diagnosis](#diagnosis)
   - [Prognosis](#prognosis)
   - [Recovery Guidelines](#recovery-guidelines)
+    - [Type 0 Recovery Steps](#type-0-recovery-steps)
+    - [Type 1 Recovery Steps](#type-1-recovery-steps)
+    - [Type 2 Recovery Steps](#type-2-recovery-steps)
+    - [Type 3 Recovery Steps](#type-3-recovery-steps)
+    - [Type 4 Recovery Steps](#type-4-recovery-steps)
+    - [Type 5 Recovery Steps](#type-5-recovery-steps)
 - [Teardown](#Teardown)
   - [Stop Cluster](#stop-cluster)
   - [Stop Pod](#stop-pod)
@@ -3116,49 +3122,91 @@ We can use the [Test Results](#test-results) to create a prognosis for each netw
 
 Based on the test results, we can provide guidelines for recovering from each network partition type.
 
-#### Type 0
+#### Type 0 Recovery Steps
+
+In Type 0, one (1) cache server is isolated.
 
 1. Fix network issues if any.
-1. Restart the isolated member.
-1. Rebalance the cluster.
+2. Restart the isolated cache server if it is unable to rejoin the cluster after the network issues have been resolved.
+3. Rebalance the cluster.
 
-#### Type 1, Type 2
+#### Type 1 Recovery Steps
+
+In Type 1, cache servers are isolated.
 
 1. Fix network issues if any.
-1. Check each member's CPU usage and available system resources.
-1. Gracefully stop members in Split A.
-1. Identify members that ran out of system resources.
-1. Increase system resources as needed for those members.
-1. Restart the stopped members.
-1. Wait for GemFire to auto-recover.
-1. Once the restarted members have successfully rejoined the cluster, check for data loss. 
-1. GemFire is expected to fully recover persistent data.
-1. Reingest non-persistent data.
+2. Check each isolated member's CPU usage and available system resources.
+3. Gracefully stop the members not in quorum.
+4. Identify the members that ran out of system resources.
+5. Increase system resources as needed for those members.
+6. Restart the stopped members.
+7. Wait for GemFire to auto-recover the restarted members.
+8. Once the restarted members have successfully rejoined the cluster, check for data loss.
+9. GemFire is expected to fully recover persistent data.
+10. Reingest non-persistent data.
 
 :exclamation: Be aware that auto-restart can take a long time to complete depending on the data volume, disk speeds, and the number of failed members. For our simple cluster, it took nearly five (5) minutes. Expect a much longer time to complete for larger clusters.
 
-#### Type 3, Type 4
+#### Type 2 Recovery Steps
+
+In Type 2, locators and cache servers are isolated.
 
 1. Fix network issues if any.
-1. Check each member to see their CPU usage and available system resources.
-1. Stop or kill all members including the locators.
-1. Make sure to remove all data stores before restarting the cluster.
-1. Restart the cluster in a clean state.
-1. Reingest persistent and non-persistent data.
+2. Check each isolated member's CPU usage and available system resources. Members here refer to both cache servers and locators.
+3. Gracefully stop the members not in quorum.
+4. Identify the members that ran out of system resources.
+5. Increase system resources as needed for those members.
+6. Restart the stopped locators first and then cache servers.
+7. Wait for GemFire to auto-recover the restarted members.
+8. Once the restarted members have successfully rejoined the cluster, check for data loss.
+9. GemFire is expected to fully recover persistent data.
+10. Reingest non-persistent data.
 
-#### Type 5
+#### Type 3 Recovery Steps
+
+In Type 3, a quorum is established with only cache servers. The recovery steps are similar to Type 4.
 
 1. Fix network issues if any.
-1. Check each member's CPU usage and available system resources.
-1. Gracefully stop data nodes (not locators) in Split A.
-1. Increase system resources for those members as needed and restart them.
-1. Identify members that ran out of system resources.
-1. Increase system resources as needed for those members.
-1. Restart the stopped members.
-1. Wait for GemFire to auto-recover.
-1. Once the restarted members have successfully rejoined the cluster, check for data loss.
-1. Data loss is not expected but be prepared to reingest data for the regions with data inconsistency.
-1. Check client applications.
+2. Check each member to see their CPU usage and available system resources.
+3. Stop or kill all cache servers and locators.
+4. Make sure to remove all data stores before restarting the cluster.
+5. Restart the cluster in a clean state.
+6. Reingest persistent and non-persistent data.
+
+#### Type 4 Recovery Steps
+
+In Type 4, all locators are isolated. The recovery steps are similar to Type 3.
+
+1. Fix network issues if any.
+2. Check each member to see their CPU usage and available system resources.
+3. Stop or kill all members including the locators.
+4. Make sure to remove all data stores before restarting the cluster.
+5. Restart the cluster in a clean state.
+6. Reingest persistent and non-persistent data.
+
+#### Type 5 Recovery Steps
+
+In Type 5, members are able to communicate with locators but members themselves are not able to communicate with each other.
+
+1. Fix network issues if any.
+
+If there were network issues and they have been resolved:
+
+2. The cluster should be back to normal. Data loss is not expected.
+3. Nonetheless, check for data loss and inconsistency, and be prepared to reingest data as needed.
+4. Check client applications.
+
+If there were no network issues:
+
+2. Check each member's CPU usage and available system resources.
+3. Gracefully stop cache servers not in quorum. Locators need not be restarted.
+4. Identify cache servers that ran out of system resources.
+5. Increase system resources as needed for those cache servers.
+6. Restart the stopped cache servers.
+7. Wait for GemFire to auto-recover.
+8. Once the restarted cache servers have successfully rejoined the cluster, check for data loss.
+9. Data loss is not expected. Nonetheless, check for data loss and inconsistency, and be prepared to reingest data as needed.
+10. Check client applications.
 
 ---
 
