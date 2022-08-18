@@ -41,6 +41,7 @@ if [[ ${OS_NAME} == CYGWIN* ]]; then
 fi
 
 # Source in app specifics
+. $APP_DIR/bin_sh/.utilenv.sh
 . $APP_DIR/bin_sh/setenv.sh
 
 # Log properties for log4j2. The log file name is set in executable scripts.

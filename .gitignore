@@ -52,3 +52,4 @@ apps/desktop_sb
 *.log
 tmp
 *.drawio.bkp
+log_type*
