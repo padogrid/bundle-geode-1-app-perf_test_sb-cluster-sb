@@ -51,18 +51,10 @@ TMP_FILE_FIRST="/tmp/padogrid-first-$EXECUTABLE-$TIMESTAMP.log"
 TMP_FILE="/tmp/padogrid-1-$EXECUTABLE-$TIMESTAMP.log"
 TMP_FILE2="/tmp/padogrid-2-$EXECUTABLE-$TIMESTAMP.log"
 TMP_FILE3="/tmp/padogrid-3-$EXECUTABLE-$TIMESTAMP.log"
-if [ -f $TMP_FILE_FIRST ]; then
-   rm $TMP_FILE_FIRST
-fi
-if [ -f $TMP_FILE ]; then
-   rm $TMP_FILE
-fi
-if [ -f $TMP_FILE2 ]; then
-   rm $TMP_FILE2
-fi
-if [ -f $TMP_FILE3 ]; then
-   rm $TMP_FILE3
-fi
+rm $TMP_FILE_FIRST > /dev/null 2>&1
+rm $TMP_FILE > /dev/null 2>&1
+rm $TMP_FILE2 > /dev/null 2>&1
+rm $TMP_FILE3 > /dev/null 2>&1
 
 echo ""
 for SUSPECT_NODE in $SUSPECT_NODES; do
@@ -101,8 +93,8 @@ for SUSPECT_NODE in $SUSPECT_NODES; do
            cat $TMP_FILE3
         fi
      fi
-     rm $TMP_FILE2
-     rm $TMP_FILE3
+     rm $TMP_FILE2 > /dev/null 2>&1
+     rm $TMP_FILE3 > /dev/null 2>&1
 
      echo ""
      echo "First logged:"
@@ -125,8 +117,8 @@ for SUSPECT_NODE in $SUSPECT_NODES; do
      else
         cat $TMP_FILE3
      fi
-     rm $TMP_FILE_FIRST
-     rm $TMP_FILE3
+     rm $TMP_FILE_FIRST > /dev/null 2>&1
+     rm $TMP_FILE3 > /dev/null 2>&1
 
      echo ""
      echo "Last logged:"
@@ -149,8 +141,8 @@ for SUSPECT_NODE in $SUSPECT_NODES; do
      else
         cat $TMP_FILE3
      fi
-     rm $TMP_FILE
-     rm $TMP_FILE3
+     rm $TMP_FILE > /dev/null 2>&1
+     rm $TMP_FILE3 > /dev/null 2>&1
    fi
    echo ""
 done

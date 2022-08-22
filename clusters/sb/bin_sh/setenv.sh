@@ -77,8 +77,17 @@ fi
 #
 #RUN_SCRIPT=$CLUSTER_DIR/bin_sh/your-script
 
+# Unset LOG_PROPERTIES to use the default log over log4j
+LOG_PROPERTIES=""
+
 ALL_NODES="node-01 node-02 node-03 node-04 node-05 node-06 node-07"
 
 LOCATOR_FILES="*locator*.log"
 SERVER_FILES="$CLUSTER-node*.log"
 ALL_FILES="*.log"
+
+# Locator host used by revoke_all_missing_disk_stores
+LOCATOR_HOST="node-06.local"
+
+# Locator port used by show_type and revoke_all_missing_disk_stores
+LOCATOR_PORT=10334

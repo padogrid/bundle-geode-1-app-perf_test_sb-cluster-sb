@@ -53,9 +53,7 @@ fi
 TIMESTAMP=`date +%y%m%d-%H%M%S`
 TMP_FILE="/tmp/padogrid-1-$EXECUTABLE-$TIMESTAMP.log"
 
-if [ -f $TMP_FILE ]; then
-   rm $TMP_FILE
-fi
+rm $TMP_FILE > /dev/null 2>&1
 
 #
 # Log files and time stamps excluded
@@ -80,5 +78,5 @@ else
    done < "$TMP_FILE"
 fi
 unset IFS
-rm $TMP_FILE
+rm $TMP_FILE > /dev/null 2>&1
 popd > /dev/null 2>&1

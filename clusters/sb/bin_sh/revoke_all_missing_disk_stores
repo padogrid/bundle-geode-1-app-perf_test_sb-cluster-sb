@@ -31,12 +31,9 @@ fi
 
 TIMESTAMP=`date +%y%m%d-%H%M%S`
 TMP_FILE1="/tmp/padogrid-1-$EXECUTABLE-$TIMESTAMP.log"
-if [ -f $TMP_FILE1 ]; then
-   rm $TMP_FILE1
-fi
+rm $TMP_FILE1 > /dev/null 2>&1
 
-
-locator_endpoint="node-06.local[10334]"
+locator_endpoint="$LOCATOR_HOST[$LOCATOR_PORT]"
 gfsh -e "connect --locator=$locator_endpoint" -e "show missing-disk-stores" | sed '1,/-----------/d' > $TMP_FILE1
 while IFS= read -r line; do
    if [ "$line" == "" ]; then
@@ -48,4 +45,4 @@ while IFS= read -r line; do
    fi
 done < "$TMP_FILE1"
 unset IFS
-rm $TMP_FILE1
+rm $TMP_FILE1 > /dev/null 2>&1

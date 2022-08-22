@@ -30,9 +30,7 @@ fi
 
 TIMESTAMP=`date +%y%m%d-%H%M%S`
 TMP_FILE="/tmp/padogrid-$EXECUTABLE-$TIMESTAMP.log"
-if [ -f $TMP_FILE ]; then
-   rm $TMP_FILE
-fi
+rm $TMP_FILE > /dev/null 2>&1
 pushd $APP_LOG_DIR > /dev/null 2>&1
 grep -E "Membership service failure|system restarted" $LOCATOR_FILES > $TMP_FILE
 echo ""
@@ -80,7 +78,7 @@ while IFS= read -r line; do
   fi
 done < "$TMP_FILE"
 unset IFS
-rm $TMP_FILE
+rm $TMP_FILE > /dev/null 2>&1
 popd > /dev/null 2>&1
 
 echo -e "Now: ${CBrownOrange}$(date '+%Y/%m/%d %H:%M:%S %Z')${CNone}"

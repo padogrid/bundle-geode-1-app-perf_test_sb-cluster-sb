@@ -19,7 +19,7 @@ NAME
 SYNOPSIS
    ./$EXECUTABLE [-?]
 
-DESRIPTION
+has been stuckDESRIPTION
    Finds struck threads. Stuck threads may occur for SB Type 5.
 
 EOF
@@ -28,66 +28,91 @@ fi
 
 FILTER1="stuck thread"
 FILTER2="wait for replies completed"
+FILTER3="has been stuck"
 
-TMP_FILE="/tmp/padogrid-$EXECUTABLE-$TIMESTAMP.log"
-if [ -f $TMP_FILE ]; then
-   rm $TMP_FILE
-fi
+TIMESTAMP=`date +%y%m%d-%H%M%S`
+TMP_FILE1="/tmp/padogrid-1-$EXECUTABLE-$TIMESTAMP.log"
+TMP_FILE2="/tmp/padogrid-2-$EXECUTABLE-$TIMESTAMP.log"
+TMP_FILE3="/tmp/padogrid-3-$EXECUTABLE-$TIMESTAMP.log"
+rm $TMP_FILE1 > /dev/null 2>&1
+rm $TMP_FILE2 > /dev/null 2>&1
+rm $TMP_FILE3 > /dev/null 2>&1
+
 pushd $APP_LOG_DIR > /dev/null 2>&1
-grep -e "$FILTER1" -e "$FILTER2" $ALL_FILES > $TMP_FILE
+grep -e "$FILTER1" -e "$FILTER2" -e "$FILTER3" $ALL_FILES > $TMP_FILE1
+# Determine a list of log files
+log_files="$(cat $TMP_FILE1 | grep .log: | sed 's/:.*$//' | uniq)"
+
 echo ""
 echo "Stuck Threads"
 echo "-------------"
 echo ""
-first_stuck=""
-last_stuck=""
-replies_completed=""
-prev_log_file=""
-while IFS= read -r line; do
-   prev_log_file=$log_file
-   log_file=$(echo $line | sed 's/:.*$//')
-   if [ "$prev_log_file" != "" ] && [ "$log_file" != "$prev_log_file" ]; then
-      if [ "$replies_completed" != "" ]; then
-         echo "$log_file"
-         echo "$TTee first: $first_stuck"
-         echo "$TTee  last:  $last_stuck"
-         echo "$TLel reply: $replies_completed"
-         first_stuck=""
-         last_stuck=""
-         replies_completed=""
-         echo ""
-      fi
-   else
-      if [[ "$line" == *"$FILTER1"* ]]; then
-         if [ "$first_stuck" == "" ]; then
-            first_stuck=$line
-         fi
-         last_stuck=$line
-      elif [[ "$line" == *"$FILTER2"* ]]; then
-         replies_completed=$line
-      fi
-      if [ "$replies_completed" != "" ]; then
-         echo "$log_file"
-         echo "$TTee first: $first_stuck"
-         echo "$TTee  last:  $last_stuck"
-         echo "$TLel reply: $replies_completed"
-         first_stuck=""
-         last_stuck=""
-         replies_completed=""
-         echo ""
+last_stuck_log_file=""
+last_stuck_timestamp=""
+last_stuck_time_in_seconds=0
+last_reply_log_file=""
+last_reply_timestamp=""
+last_reply_time_in_seconds=0
+last_replies_completed=""
+for log_file in $log_files; do
+   cat $TMP_FILE1 | grep $log_file | grep "$FILTER3" | sed -e 's/^.*Thread/Thread/' -e 's/ that was.*$//' | sort -u > $TMP_FILE2
+   cat $TMP_FILE1 | grep $log_file > $TMP_FILE3
+   first_stuck=$(cat $TMP_FILE3 | grep "$FILTER1" | head -n 1)
+   last_stuck=$(cat $TMP_FILE3 | grep "$FILTER1" | tail -n 1)
+   timestamp=$(echo $last_stuck | sed -e "s/$log_file://" -e 's/^.*warn //' -e "s/$CLUSTER.*$//" -e 's/warn.*//i')
+   time_in_seconds=$(get_time_in_seconds $timestamp)
+   if [ $time_in_seconds -gt $last_stuck_time_in_seconds ]; then
+      last_stuck_timestamp=$timestamp
+      last_stuck_time_in_seconds=$time_in_seconds
+      last_stuck_log_file=$log_file
+   fi
+   replies_completed=$(cat $TMP_FILE3 | grep "$FILTER2" | tail -n 1)
+   if [ "$replies_completed" != "" ]; then
+      timestamp=$(echo $replies_completed | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER.*$//"  -e 's/info.*//i')
+      time_in_seconds=$(get_time_in_seconds $timestamp)
+      if [ $time_in_seconds -gt $last_reply_time_in_seconds ]; then
+         last_reply_timestamp=$timestamp
+         last_reply_time_in_seconds=$time_in_seconds
+         last_reply_log_file=$log_file
+         last_replies_completed=$replies_completed
       fi
    fi
-done < "$TMP_FILE"
-unset IFS
-
-if [ "$first_stuck" != "" ]; then
-   echo "Stuck thread(s)"
+   echo "$log_file"
    echo "$TTee first: $first_stuck"
-   echo "$TTee  last:  $last_stuck"
-   echo "$TLel reply: $replies_completed"
-fi
-
-rm $TMP_FILE
+   echo "$TTee  last: $last_stuck"
+   echo "$TTee reply: $replies_completed"
+   echo "$TLel threads"
+   while IFS= read -r line; do
+      if [[ "$line" == *"$Thread"* ]]; then
+         thread=$line
+         last_line=$(cat $TMP_FILE1 | grep "$log_file" | grep "$FILTER3" | grep "$thread" | tail -n 1)
+         timestamp=$(echo $last_line | sed -e "s/$log_file://" -e 's/^.*warn //' -e "s/$CLUSTER.*$//" -e 's/warn.*//i')
+         stuck_seconds=$(echo $last_line | sed -e 's/^.*for <//' -e 's/ seconds.*$//')
+         iteration=$(echo $last_line | sed -e 's/^.*iteration <//' -e 's/>.*$//')
+         echo "    $TTee    thread: $thread"
+         echo "    $TTee      time: $timestamp"
+         echo "    $TTee    period: $stuck_seconds sec"
+         echo "    $TLel iteration: $iteration"
+      fi
+   done < "$TMP_FILE2"
+   unset IFS
+   rm $TMP_FILE2 > /dev/null 2>&1
+   rm $TMP_FILE3 > /dev/null 2>&1
+   echo ""
+done
 popd > /dev/null 2>&1
 
+echo "Last Summary"
+echo "$TTee stuck log: $last_stuck_log_file"
+echo "$TBar   $TLel last stuck: $last_stuck_timestamp"
+echo "$TLel reply log: $last_reply_log_file"
+echo "    $TLel last reply: $last_reply_timestamp"
+
+echo ""
+
+rm $TMP_FILE1 > /dev/null 2>&1
+rm $TMP_FILE2 > /dev/null 2>&1
+rm $TMP_FILE3 > /dev/null 2>&1
+
 echo -e "Now: ${CBrownOrange}$(date '+%Y/%m/%d %H:%M:%S %Z')${CNone}"
+echo ""

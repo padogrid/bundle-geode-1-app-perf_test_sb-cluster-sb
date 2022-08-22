@@ -3,7 +3,7 @@
 ---
 # Geode/GemFire Split-Brain
 
-This bundle provides scripts, configuration files, and apps for creating a Geode/GemFire network split-brain environment where you can test Geode/GemFire split-brain capabilities.
+This bundle provides scripts, configuration files, and apps for creating a Geode/GemFire network split-brain environment where you can test Geode/GemFire split-brain capabilities. Although it focuses on split-brain issues, the scripts provided cover any system failures.
 
 ## Table of Contents
 
@@ -458,8 +458,11 @@ The `sb/bin_sh` folder also contains log scraping scripts as follows. These scri
 | show_membership_service_failure        | Display membership service failure and restarted messages from locators      |
 | show_missing_disk_stores               | Display missing disk stores                                                  |
 | show_offline_members                   | Display offline regions per member                                           |
+| show_quorum_check                      | Display quorum check status if any                                           |
+| show_recovery_steps                    | Display recovery steps for the specfied type                                 |
 | show_stuck_threads                     | Find stuck threads                                                           |
 | show_suspect_node_pair                 | Find the specified suspect node pair from the log files                      |
+| show_type                              | Determine the network partition type                                         |
 
 To display the `sb` cluster status, run the `show_cluster` command as follows.
 
@@ -519,6 +522,10 @@ We are now ready to conduct split-brain tests. The subsequent section presents a
 ---
 
 ## Test Cases
+
+In thist section, we carry out six (6) test cases to understand how Geode/GemFire behaves under each network partition type. By observing how the locators and members (cache servers) interact when a network partition occurs, we can deduce a pattern that can be used to identify the network partition type, which would aid us to quickly diagnose a system failure in real-life systems. Once we have determined the network partition type, we can then systematically recover from the failure.
+
+This bundle includes the `show_type` script that can be run at any time to check the cluster status. It scrapes the log files to determine the network partition type and provides the respective system recovery procedure. Our ultimate goal is to have this script to tell us what to do in case of any Geode/GemFire failure.
 
 ### Type 0
 

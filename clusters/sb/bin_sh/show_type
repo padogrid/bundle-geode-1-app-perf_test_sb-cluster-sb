@@ -17,12 +17,33 @@ NAME
    $EXECUTABLE - Determine the network partition type
 
 SYNOPSIS
-   ./$EXECUTABLE [-recovery] [-?]
+   ./$EXECUTABLE [-diag gfsh|true|false] [-recovery] [-?]
 
 DESRIPTION
-   Determines the network partition type.
+   Determines the network partition type. The '-diag' option allows you to perform
+   an online or offline diagnosis. If you are diagnosing in the cluster environment
+   where you can connect to the cluster, then specify the '-diag gfsh' option.
+   Otherwise, if you do not have access to the cluster, then specify '-diag true'
+   or '-diag false'. The former (true) indicates that one of the locators can
+   be connected, and the latter (false) indicates that none of the locators can
+   ben connected. The default is '-diag false'.
 
 OPTIONS
+   -diag gfsh|true|false
+            If gfsh, then attempts to connect to the locators found in the log files
+            for diagnosis using gfsh. The port number must be set to LOCATOR_PORT in
+            the 'setenv.sh'. The default is set as follows.
+
+            LOCATOR_PORT="$LOCATOR_PORT"
+
+            If 'true', then it is assumed that you are able to connect to one of the
+            locators.
+
+            If 'false', the it is assumed that you are not able to connect to any of
+            the locators.
+
+            Default: false
+
    -recovery
             If specified, then displays recovery steps for the identified network partition type.
 
@@ -34,28 +55,53 @@ exit
 fi
 
 RECOVERY_SPECIFIED=$([[ "$@" == *"-recovery"* ]] && echo "true" || echo "false")
+SHOW_OPTS=""
+if [ "$NO_COLOR" == "true" ]; then
+   SHOW_OPTS="-no-color"
+fi
+
+if [ "$DIAG_ARG" == "" ]; then
+   DIAG_ARG="false"
+fi
+case $DIAG_ARG in  
+      gfsh|true|false)
+      ;;
+   *)
+      echo -e "${CError}ERROR:${CNone} Invalid -connect option [$DIAG_ARG]. Command aborted."
+      exit 1
+      ;;
+esac
 
 TIMESTAMP=`date +%y%m%d-%H%M%S`
 TMP_FILE1="/tmp/padogrid-1-$EXECUTABLE-$TIMESTAMP.log"
-if [ -f $TMP_FILE1 ]; then
-   rm $TMP_FILE1
-fi
+rm $TMP_FILE1 > /dev/null 2>&1
 TMP_FILE2="/tmp/padogrid-2-$EXECUTABLE-$TIMESTAMP.log"
-if [ -f $TMP_FILE2 ]; then
-   rm $TMP_FILE2
-fi
+rm $TMP_FILE2 > /dev/null 2>&1
 
 type="normal"
+
+#
+# Find membership failures
+#
 last_restarted_timestamp=""
-./show_membership_service_failure -no-color > $TMP_FILE1
-if [ "$(cat $TMP_FILE1 | grep 'system restarted')" != "" ]; then
-   last_restarted_timestamp=$(./show_membership_service_failure | grep -B 1 'system restarted' | grep "$TTee" | sed -e "s/$TTee //" | sort | tail -n 1)
-fi
+last_failure_timestamp=""
+last_restarted_in_seconds=0
+last_failure_in_seconds=0
 is_membership_failure="false"
+./show_membership_service_failure -no-color > $TMP_FILE1
 if [ "$(cat $TMP_FILE1 | grep 'Membership service failure')" != "" ]; then
+   if [ "$(cat $TMP_FILE1 | grep 'system restarted')" != "" ]; then
+      last_restarted_timestamp=$(./show_membership_service_failure -no-color | grep -B 1 'system restarted' | grep "$TTee" | sed -e "s/$TTee //" | sort | tail -n 1)
+      last_failure_timestamp=$(./show_membership_service_failure -no-color | grep -B 1 'Membership service failure' |  grep "$TTee" |  sed -e "s/^.*fatal //" | sort | tail -n 1)
+      last_restarted_in_seconds=$(get_time_in_seconds $last_restarted_timestamp)
+      last_failure_in_seconds=$(get_time_in_seconds $last_failure_timestamp)
+   fi
    is_membership_failure="true"
 fi
-rm $TMP_FILE1
+rm $TMP_FILE1 > /dev/null 2>&1
+if [ $last_restarted_in_seconds -lt $last_failure_in_seconds ]; then
+   last_restarted_timestamp=""
+fi
 
 # Cluster views
 ./show_cluster_views -no-color > $TMP_FILE1
@@ -64,7 +110,7 @@ if [ "$is_membership_failure" != "true" ]; then
    line_count=$(cat $TMP_FILE1 | sed '/crashed/h;//!H;$!d;x' | wc -l)
    crashed_count=$(cat $TMP_FILE1 | sed '/crashed/h;//!H;$!d;x' | grep 'crashed:' | sed 's/.*crashed:.* //')
    if [ "$line_count" == "5" ] && [ "$crashed_count" != "" ]; then
-      crashed_members=$(cat $TMP_FILE1 -no-color | sed '/crashed/h;//!H;$!d;x' | grep -A $crashed_count 'crashed:' | sed '/crashed/d' | sed -e 's/^.* //')
+      crashed_members=$(cat $TMP_FILE1 | sed '/crashed/h;//!H;$!d;x' | grep -A $crashed_count 'crashed:' | sed '/crashed/d' | sed -e 's/^.* //')
 
       echo ""
       for i in $crashed_members; do
@@ -78,7 +124,7 @@ if [ "$is_membership_failure" != "true" ]; then
          echo -e "       type: ${CError}$type${CNone}"
          echo ""
          show_recovery $type
-         rm $TMP_FILE1
+         rm $TMP_FILE1 > /dev/null 2>&1
          exit
       fi
    fi
@@ -91,9 +137,11 @@ fi
 # Determine a list of log files
 log_files="$(cat $TMP_FILE1 | grep .log: | sed 's/:.*$//' | uniq)"
 
-# Determine the last view timestamp
+# Determine the view timestamps and last view timestamp
 declare -A view_timestamp_array
 view_times_in_seconds=""
+last_view_timestamp=""
+last_view_time_in_seconds=0
 index=0
 for i in $log_files; do
    first_line=$(cat $TMP_FILE1 | grep "$i" | tail -n 1)
@@ -106,8 +154,60 @@ for i in $log_files; do
    else
       view_times_in_seconds="$view_times_in_seconds $time_in_seconds"
    fi
+   if [ $last_view_time_in_seconds -lt $time_in_seconds ]; then
+      last_view_time_in_seconds=$time_in_seconds
+      last_view_timestamp=$timestamp
+   fi
    let index=index+1
 done
+
+if [ "$last_view_timestamp" == "" ]; then
+   echo -e "${CError}ERROR:${CNone} Unable to find cluster views. Log file contents are incomplete."
+   echo "       Please collect additional log files. Command aborted."
+   exit 1
+fi
+
+echo ""
+if [ "$last_restarted_timestamp" != "" ]; then
+   echo "last restarted: $last_restarted_timestamp"
+fi
+echo "     last view: $last_view_timestamp"
+
+# Get all crashed members and check if they are in the last view
+# rejoined_crashed_members --> all members crashed and rejoined the cluster
+# remaining_crashed_members --> all members remain crashed
+FILTER="received new view"
+pushd $APP_LOG_DIR > /dev/null 2>&1
+crashed_members=$(grep "$FILTER" $LOCATOR_FILES |grep crashed: | sed -e 's/^.*crashed: //' -e 's/\[//' -e 's/(.*$//' | sort -u)
+popd > /dev/null 2>&1
+crashed_members=$(echo $crashed_members | xargs -n1 | sort -u | xargs)
+
+timestamp_search=$(echo $last_view_timestamp | sed 's/\//\\\//g')
+cat $TMP_FILE1 | grep -A 100 "$last_view_timestamp" | sed -n "/$timestamp_search/,/weight:/p" > $TMP_FILE2
+rejoined_crashed_members=""
+remaining_crashed_members=""
+if [ "$(cat $TMP_FILE2 | grep crashed:)" == "" ]; then
+   for i in $crashed_members; do 
+      if [ "$(cat $TMP_FILE2 | grep $i)" != "" ]; then
+         rejoined_crashed_members="$rejoined_crashed_members $i"
+      else
+         remaining_crashed_members="$remaining_crashed_members $i"
+      fi
+   done
+fi
+rejoined_crashed_members=$(echo $rejoined_crashed_members | xargs -n1 | sort -u | xargs)
+remaining_crashed_members=$(echo $remaining_crashed_members | xargs -n1 | sort -u | xargs)
+
+echo ""
+if [ "$crashed_members" ]; then
+   echo "  diagnosis: Member(s) crashed before the last view are $crashed_members"
+fi
+if [ "$rejoined_crashed_members" != "" ]; then
+   echo "  diagnosis: Member(s) rejoined after all crashes are $rejoined_crashed_members"
+fi
+if [ "$remaining_crashed_members" != "" ]; then
+   echo "  diagnosis: Member(s) still remain crashed are $remaining_crashed_members"
+fi
 
 # Find all locators logged
 cat $TMP_FILE1 | grep "  .*locator" | sed -e 's/^.* //' -e 's/(.*$//' -e 's/ .*$//' > $TMP_FILE2
@@ -122,38 +222,42 @@ while IFS= read -r line; do
    fi
 done < "$TMP_FILE2"
 unset IFS
-rm $TMP_FILE2
+rm $TMP_FILE2 > /dev/null 2>&1
 
 echo ""
 if [ "$is_membership_failure" == "true" ] && [ "$last_restarted_timestamp" == "" ]; then
-   for locator in $all_locators; do
-     locator_endpoint=$locator[10334]
-     echo "Connecting to locator via gfsh $locator_endpoint..."
-     gfsh -e "connect --locator=$locator_endpoint" > $TMP_FILE2
-     if [ "$(cat $TMP_FILE2 | grep -i success)" != "" ]; then
-        echo "  diagnosis: $locator_endpoint connection successful"
-        if [ "$successful_locators" == "" ]; then
-           successful_locators="$locator_endpoint"
-        else
-           successful_locators="$successful_locators $locator_endpoint"
-        fi
-     else
-        if [ "$failed_locators" == "" ]; then
-           failed_locators="$locator_endpoint"
-        else
-           failed_locators="$failed_locators $locator_endpoint"
-        fi
-        echo "  diagnosis: $locator_endpoint connection failed"
-     fi
-     echo ""
-     rm $TMP_FILE2
-   done
+   successful_locators=""
+   failed_locators=""
+   if [ "$DIAG_ARG" == "gfsh" ]; then
+      for locator in $all_locators; do
+         locator_endpoint=$locator[$LOCATOR_PORT]
+         echo "Connecting to locator via gfsh $locator_endpoint..."
+         gfsh -e "connect --locator=$locator_endpoint" > $TMP_FILE2
+         if [ "$(cat $TMP_FILE2 | grep -i success)" != "" ]; then
+            echo "  diagnosis: $locator_endpoint connection successful"
+            if [ "$successful_locators" == "" ]; then
+               successful_locators="$locator_endpoint"
+            else
+               successful_locators="$successful_locators $locator_endpoint"
+            fi
+         else
+            if [ "$failed_locators" == "" ]; then
+               failed_locators="$locator_endpoint"
+            else
+               failed_locators="$failed_locators $locator_endpoint"
+            fi
+            echo -e "  diagnosis: $locator_endpoint ${CError}connection failed${CNone}"
+         fi
+         echo ""
+         rm $TMP_FILE2 > /dev/null 2>&1
+      done
+   fi
 
    type="inconclusive"
-   if [ "$successful_locators" == "" ]; then
-      diffs=$(./show_quorum_check | grep diff: | sed 's/^.*diff: //' | uniq)
-      members=$(./show_quorum_check | grep weight: | sed 's/^.*members: //' | uniq)
-      weights=$(./show_quorum_check | grep weight: | sed 's/^.*weight: //' | uniq)
+   if [ "$successful_locators" == "" ] || [ "$DIAG_ARG" == "false" ]; then
+      diffs=$(./show_quorum_check -no-color | grep "weight sum diff:" | sed 's/^.*weight sum diff: //' | uniq)
+      members=$(./show_quorum_check -no-color | grep "members from last contact:" | sed 's/^.*members from last contact: //' | uniq)
+      weights=$(./show_quorum_check -no-color | grep "weight sum in cluster:" | sed 's/^.*weight sum in cluster: //' | uniq)
 
       if [ "$diffs" != "" ]; then
          #
@@ -176,7 +280,8 @@ if [ "$is_membership_failure" == "true" ] && [ "$last_restarted_timestamp" == ""
             fi
          done
       fi
-   else
+   fi
+   if [ "$type" == "inconclusive" ]; then
       echo ""
       echo "  diagnosis: Network partition wait in progress."
       echo "             If 'enable-network-partition-detection=true' (default) then"
@@ -187,7 +292,7 @@ if [ "$is_membership_failure" == "true" ] && [ "$last_restarted_timestamp" == ""
    echo -e "       type: ${CError}$type${CNone}"
    echo ""
    show_recovery $type
-   rm $TMP_FILE1
+   rm $TMP_FILE1 > /dev/null 2>&1
    exit
 fi
 
@@ -252,7 +357,7 @@ if [ "$last_restarted_timestamp" != "" ]; then
 
    # Determine locators and coordinator
    echo ""
-   locators=""
+   view_locators=""
    coordinator_addr=""
    declare -A coordinator_addr_array
    declare -A weight_array
@@ -292,11 +397,11 @@ if [ "$last_restarted_timestamp" != "" ]; then
                if [ "$(echo $line | grep locator)" != "" ]; then
                   member_type="locator"
                   let weight_sum=weight_sum+3
-                  if [[ "$locators" != *"$addr"* ]]; then
-                     if [ "$locators" == "" ]; then
-                       locators=$addr
+                  if [[ "$view_locators" != *"$addr"* ]]; then
+                     if [ "$view_locators" == "" ]; then
+                       view_locators=$addr
                      else
-                        locators="$locators $addr"
+                        view_locators="$view_locators $addr"
                      fi
                   fi
                elif [ "$(echo $line | grep lead)" != "" ]; then
@@ -311,7 +416,7 @@ if [ "$last_restarted_timestamp" != "" ]; then
          esac
       done < "$TMP_FILE2"
       unset IFS
-      rm $TMP_FILE2
+      rm $TMP_FILE2 > /dev/null 2>&1
       weight_sums="$weight_sums $weight_sum"
       if [ "$coordinator" != "Failed members" ]; then
          last_weight_sum=$weight_sum
@@ -327,7 +432,7 @@ if [ "$last_restarted_timestamp" != "" ]; then
       echo " max weight: $max_weight"
       echo "weight diff: $diff"
       if [ $weight_sum -eq $max_weight ]; then
-         echo "  diagnosis: Cluster weight sum same as max weight sum [$diff]"
+         echo "  diagnosis: Cluster weight sum same as max weight sum"
       elif [ $weight_sum -lt $max_weight ]; then
          echo "  diagnosis: Cluster weight sum reduced [$diff]"
       else
@@ -336,10 +441,11 @@ if [ "$last_restarted_timestamp" != "" ]; then
       echo ""
    done
 
+   # NOTE: view_locators and all_locators should be same
    sb_locators=""
    for i in $all_locators; do
       found="false"
-      for j in $locators; do
+      for j in $view_locators; do
          if [ "$i" == "$j" ]; then
             found="true"
             break;
@@ -355,43 +461,51 @@ if [ "$last_restarted_timestamp" != "" ]; then
    done
 
    echo ""
-   echo "    all locators: $all_locators"
-   echo "missing locators: $sb_locators"
-   echo " active locators: $locators"
+   echo "  diagnosis: Locators found in views $view_locators"
    echo ""
-   echo "Testing cluster connnection..."
+   echo "Testing cluster connnection with locators found in views..."
    echo ""
    successful_locators=""
    failed_locators=""
-   for locator in $locators; do
-     locator_endpoint=$locator[10334]
-     gfsh -e "connect --locator=$locator_endpoint" > $TMP_FILE2
-     if [ "$(cat $TMP_FILE2 | grep -i success)" != "" ]; then
-        echo "  diagnosis: $locator_endpoint connection successful"
-        if [ "$successful_locators" == "" ]; then
-           successful_locators="$locator_endpoint"
+   if [ "$DIAG_ARG" == "gfsh" ]; then
+      for locator in $view_locators; do
+        locator_endpoint=$locator[$LOCATOR_PORT]
+        gfsh -e "connect --locator=$locator_endpoint" > $TMP_FILE2
+        if [ "$(cat $TMP_FILE2 | grep -i success)" != "" ]; then
+           echo "  diagnosis: $locator_endpoint connection successful"
+           if [ "$successful_locators" == "" ]; then
+              successful_locators="$locator_endpoint"
+           else
+              successful_locators="$successful_locators $locator_endpoint"
+           fi
         else
-           successful_locators="$successful_locators $locator_endpoint"
+           if [ "$failed_locators" == "" ]; then
+              failed_locators="$locator_endpoint"
+           else
+              failed_locators="$failed_locators $locator_endpoint"
+           fi
+           echo "  diagnosis: $locator_endpoint connection failed"
+           cat $TMP_FILE2 
         fi
-     else
-        if [ "$failed_locators" == "" ]; then
-           failed_locators="$locator_endpoint"
-        else
-           failed_locators="$failed_locators $locator_endpoint"
-        fi
-        echo "  diagnosis: $locator_endpoint connection failed"
-        cat $TMP_FILE2 
-     fi
-     rm $TMP_FILE2
-   done
+        rm $TMP_FILE2 > /dev/null 2>&1
+      done
+
+      echo ""
+      if [ "$successful_locators" == "" ]; then
+         echo "  reachable locators: none"
+      else
+         echo "  reachable locators: $successful_locators"
+      fi
+      if [ "$failed_locators" == "" ]; then
+         echo "unreachable locators: none"
+      else
+         echo "unreachable locators: $failed_locators"
+      fi
+   fi
+
    rm $TMP_FILE1 > /dev/null 2>&1
 
-   if [ "$successful_locators" != "" ]; then
-
-      successful_locator_count=0
-      for i in $successful_locators; do
-         let successful_locator_count=successful_locator_count+1
-      done
+   if [ "$successful_locators" != "" ] || [ "$DIAG_ARG" == "true" ]; then
       prev_coordinator_addr=""
       coordinator_addr_list=${coordinator_addr_array[@]}
       coordinator_addr_list=$(unique_words "$coordinator_addr_list")
@@ -401,7 +515,14 @@ if [ "$last_restarted_timestamp" != "" ]; then
          let coordinator_count=coordinator_count+1
       done
       if [ $coordinator_count -gt 1 ]; then
-         echo "  diagnosis: Multiple active coordinators found"
+         echo -e "  diagnosis: Multiple active coordinators found [${CError}split-brain${CNone}]"
+
+         type="2"
+         echo ""
+         echo -e "       type: ${CError}$type${CNone}"
+         echo ""
+         show_recovery $type
+         exit
       fi
 
       prev_weight=0
@@ -418,30 +539,42 @@ if [ "$last_restarted_timestamp" != "" ]; then
       echo ""
       echo "Checking missing disk stores..."
       echo ""
-      last_stuck_thread_message=$(./show_stuck_threads -no-color | grep last: | sed 's/^.*last: //')
-      reply_stuck_thread_message=$(./show_stuck_threads -no-color | grep reply: | sed 's/^.*reply: //')
-      line_count=$(./show_stuck_threads | wc -l) 
-      last_stuck_thread_message=$(trimString "$last_stuck_thread_message")
-      reply_stuck_thread_message=$(trimString "$reply_stuck_thread_message")
-      if [ "$last_stuck_thread_message" == "" ] || [ "$reply_stuck_thread_message" != "" ]; then
+      last_stuck_thread_timestamp=$(./show_stuck_threads -no-color | grep "last stuck:" | sed 's/^.*last stuck: //')
+      last_stuck_thread_in_seconds=$(get_time_in_seconds $last_stuck_thread_timestamp)
+      last_reply_thread_timestamp=$(./show_stuck_threads -no-color | grep "last reply:" | sed 's/^.*last reply: //')
+      last_reply_thread_in_seconds=$(get_time_in_seconds $last_reply_thread_timestamp)
+
+      if [ "$last_stuck_thread_timestamp" == "" ] || [ "$last_reply_thread_timestamp" != "" ]; then
          #
          # --------- Type 1 ----------
+         # --------- Type 2 ----------
          #
  
          # no stuck threads
-         if [ "$(./show_missing_disk_stores | grep offline)" != "" ]; then
+         if [ "$(./show_missing_disk_stores -no-color | grep offline)" != "" ]; then
             # missing disk stores found
-            echo "  diagnosis: Missing disk stores found"
-            if [ "$is_weights_differ" != "true" ] && [ "$sb_locators" == "" ]; then
-               type="1"
+            last_missing_disk_store_timestamp=$(./show_missing_disk_stores | grep "^$TTee" | sed "s/$TTee //" | sort -u | tail -n 1)
+            last_missing_disk_store_time_in_seconds=$(get_time_in_seconds $last_missing_disk_store_timestamp)
+            if [ $last_missing_disk_store_time_in_seconds -gt $last_view_time_in_seconds ]; then
+               is_missing_disk_stores_newer="true"
             else
-               type="2"
+               is_missing_disk_stores_newer="false"
             fi
-            echo ""
-            echo -e "       type: ${CError}$type${CNone}"
-            echo ""
-            show_recovery $type
-            exit
+            if [ "$is_missing_disk_stores_newer" == "true" ] && [ "$remaining_crashed_members" != "" ]; then
+               echo "  diagnosis: Missing disk stores found"
+               if [ "$is_weights_differ" != "true" ] && [ "$sb_locators" == "" ]; then
+                  type="1"
+               else
+                  type="2"
+               fi
+               echo ""
+               echo -e "       type: ${CError}$type${CNone}"
+               echo ""
+               show_recovery $type
+               exit
+            else
+               echo "  diagnosis: Missing disk stores found but they are older than the last view and there are no crashed members reported since."
+            fi
          else
             # check data loss
             type="1 or normal"
@@ -456,16 +589,21 @@ if [ "$last_restarted_timestamp" != "" ]; then
          #
          # --------- Type 5 ----------
          #
- 
-         type="5"
-         echo ""
-         echo -e "       type: ${CError}$type${CNone}"
-         echo ""
-         show_recovery $type
-         exit
+         if [ "$remaining_crashed_members" != "" ]; then
+            type="5"
+            echo ""
+            echo -e "       type: ${CError}$type${CNone}"
+            echo ""
+            show_recovery $type
+            exit
+         fi
       fi
    else
-      if [ "$(./show_missing_disk_stores | grep offline)" != "" ]; then
+      for i in ${!coordinator_addr_array[@]}; do
+         echo "coordinator: ${coordinator_addr_array[$i]}"
+      done
+
+      if [ "$(./show_missing_disk_stores -no-color | grep offline)" != "" ]; then
          #
          # --------- Type 2 ----------
          #
@@ -488,52 +626,98 @@ if [ "$last_restarted_timestamp" != "" ]; then
          exit
       fi
    fi
-
-   if [ "$last_view_timestamp" == "" ]; then
-      echo -e "${CError}ERROR:${CNone} Unable to find cluster views. Log file contents are incomplete."
-      echo "       Please collect additional log files. Command aborted."
-      exit 1
-   fi
-   echo "last_restarted_timestamp: $last_restarted_timestamp"
-   echo "     last_view_timestamp: $last_view_timestamp"
-
 fi
 
 rm $TMP_FILE1 > /dev/null 2>&1
 
-last_stuck_thread=$(./show_stuck_threads | grep last: | sed 's/^.*last: //')
+echo ""
+echo "Checking stuck threads..."
+echo ""
+last_stuck_thread_timestamp=$(./show_stuck_threads -no-color | grep "last stuck:" | sed 's/^.*last stuck: //')
+last_stuck_thread_in_seconds=$(get_time_in_seconds $last_stuck_thread_timestamp)
+last_reply_thread_timestamp=$(./show_stuck_threads -no-color | grep "last reply:" | sed 's/^.*last reply: //')
+last_reply_thread_in_seconds=$(get_time_in_seconds $last_reply_thread_timestamp)
+if [ "$last_stuck_thread_timestamp" != "" ]; then
+   echo "       last stuck thread time: $last_stuck_thread_timestamp"
+   echo " last stuck thread reply time: $last_reply_thread_timestamp"
+   echo ""
+   if [ $last_stuck_thread_in_seconds -gt $last_view_time_in_seconds ]; then
+      echo "  diagnosis: Stuck thread(s) found after the last view"
+   else
+      echo "  diagnosis: Stuck thread(s) found before the last view"
+   fi
+   if [ $last_reply_thread_in_seconds -gt $last_view_time_in_seconds ]; then
+      echo "  diagnosis: Last stuck thread reply found after the last view"
+   else
+      echo "  diagnosis: Last stuck thread reply found before the last view"
+   fi
+else
+   echo "  diagnosis: No stuck threads found"
+fi
+
+echo ""
+echo "Checking suspects..."
+echo ""
+pushd $APP_LOG_DIR > /dev/null 2>&1
+grep suspect $ALL_FILES  | grep "received suspect" > $TMP_FILE1
+popd > /dev/null 2>&1
+suspect_log_files="$(cat $TMP_FILE1 | grep .log: | sed 's/:.*$//' | uniq)"
+last_suspect_log_file=""
+last_suspect_timestamp=""
+last_suspect_time_in_seconds=0
 is_suspect="false"
-if [ "$last_stuck_thread" == "" ]; then
-   echo "Checking suspects..."
-   ./show_all_suspect_node_pairs -no-color > $TMP_FILE1
-   is_suspect=$([ "$(cat $TMP_FILE1 | grep For:)" != "" ] && echo "true" || echo "false")
-   if [ "$is_suspect" == "true" ]; then
-      last_suspect_timestamp=$(cat $TMP_FILE1 | grep -A 1 "Last logged:" | tail -n 1)
-      last_suspect_time_in_seconds=$(get_time_in_seconds $last_suspect_timestamp)
-      echo "  diagnosis:  Last suspect recorded at $last_suspect_timestamp"
-      max_view_time_in_seconds=0
-      for view_time_in_seconds in $view_times_in_seconds; do
-         if [ $max_view_time_in_seconds -lt $view_time_in_seconds ]; then
-            let max_view_time_in_seconds=$max_view_time_in_seconds
-         fi
-      done
-      if [ $last_suspect_time_in_seconds -gt $max_view_time_in_seconds ]; then
+for suspect_log_file in $suspect_log_files; do
+   last_line=$(cat $TMP_FILE1 | grep $suspect_log_file | tail -n 1)
+   timestamp=$(echo $last_line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER.*$//"  -e 's/info.*//i')
+   time_in_seconds=$(get_time_in_seconds $timestamp)
+   if [ $time_in_seconds -gt $last_suspect_time_in_seconds ]; then 
+      last_suspect_log_file=$suspect_log_file
+      last_suspect_timestamp=$timestamp
+      last_suspect_time_in_seconds=$time_in_seconds
+      is_suspect="true"
+   fi
+done
+
+if [ "$is_suspect" == "true" ]; then
+   echo "  diagnosis: Last suspect recorded in $last_suspect_log_file"
+   echo "  diagnosis: Last suspect recorded at $last_suspect_timestamp"
+   echo "  diagnosis: Last view recorded at    $last_view_timestamp"
+   if [ $last_suspect_time_in_seconds -gt $last_view_time_in_seconds ]; then
+      is_suspect="true"
+      echo "  diagnosis: Suspects found"
+      type="inconclusive"
+   else
+      if [ "$remaining_crashed_members" != "" ]; then
          is_suspect="true"
-         echo "  diagnosis: Suspects found"
+         type="inconclusive"
       else
          is_suspect="false"
-         echo "  diagnosis: Last suspect recorded is older than the lastest view ${max_view_timestamp}"
+         echo "  diagnosis: Last suspect recorded is older than the last view ${last_view_timestamp}"
+         echo "  diagnosis: Members are all present in the cluster and accounted for"
       fi
    fi
-   rm $TMP_FILE1
+else
+   echo "  diagnosis: No suspects found"
 fi
-if [ "$last_stuck_thread" != "" ] || [ "$is_suspect" == "true" ]; then
-   type="5"
-   echo ""
-   echo -e "       type: ${CError}$type${CNone}"
-   echo ""
-   show_recovery $type
-   exit
+rm $TMP_FILE1 > /dev/null 2>&1
+
+if [ "$last_stuck_thread_timestamp" != "" ] || [ "$is_suspect" == "true" ]; then
+   if [ "$remaining_crashed_members" != "" ]; then
+      type="5"
+   elif [ $last_stuck_thread_in_seconds -gt $last_view_time_in_seconds ]; then
+      if [ $last_reply_thread_in_seconds -lt $last_view_time_in_seconds ]; then
+         type="5"
+      fi
+   else
+      type="inconclusive"
+   fi
+   if [ "$type" == "5" ]; then
+      echo ""
+      echo -e "       type: ${CError}$type${CNone}"
+      echo ""
+      show_recovery $type
+      exit
+   fi
 fi
 
 echo ""

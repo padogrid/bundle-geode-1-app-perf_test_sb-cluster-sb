@@ -31,9 +31,7 @@ fi
 
 TIMESTAMP=`date +%y%m%d-%H%M%S`
 TMP_FILE1="/tmp/padogrid-1-$EXECUTABLE-$TIMESTAMP.log"
-if [ -f $TMP_FILE1 ]; then
-   rm $TMP_FILE1
-fi
+rm $TMP_FILE1 > /dev/null 2>&1
 
 pushd $APP_LOG_DIR > /dev/null 2>&1
 grep 'quorum check' $LOCATOR_FILES | grep contacted > $TMP_FILE1
@@ -45,7 +43,9 @@ echo "-------------"
 echo ""
 for log_file in $log_files; do
    contacted_count=$(cat $TMP_FILE1 | grep $log_file | wc -l)
+   contacted_count=$(trimString $contacted_count)
    timeout_count=$(grep 'quorum check' $LOCATOR_FILES | grep 'timeout waiting' | grep $log_file | wc -l)
+   timeout_count=$(trimString $timeout_count)
    line=$(grep $log_file $TMP_FILE1 | tail -n 1)
    member_count=$(echo $line | sed -e 's/^.*contacted //' -e 's/ processes.*$//')
    weight_sum=$(echo $line | sed -e 's/^.*with //' -e 's/ member.*$//')
@@ -57,20 +57,24 @@ for log_file in $log_files; do
 
 
    echo "$log_file"
-   echo "$TTee contacted: $contacted_count"
+   echo "$TTee             contact count: $contacted_count"
    if [ $member_count == "" ]; then
-      echo "$TLel  timeouts: $timeout_count"
+      echo "$TLel             timeout count: $timeout_count"
    else
-      echo "$TTee  timeouts: $timeout_count"
-      echo "$TTee   members: $member_count"
-      echo "$TTee    weight: $weight_sum"
-      echo "$TTee threshold: $threshold_sum"
-      echo "$TLel      diff: $diff"
+      echo "$TTee             timeout count: $timeout_count"
+      echo "$TTee members from last contact: $member_count"
+      echo "$TTee     weight sum in cluster: $weight_sum"
+      echo "$TTee      weight sum threshold: $threshold_sum"
+      if [ $diff -lt 0 ]; then
+         echo -e "$TLel           weight sum diff: ${CError}$diff${CNone}"
+      else
+         echo "$TLel           weight sum diff: ${CGo}$diff${CNone}"
+      fi
    fi
+   echo ""
 done
-rm $TMP_FILE1
+rm $TMP_FILE1 > /dev/null 2>&1
 popd > /dev/null 2>&1
 
-echo ""
 echo -e "Now: ${CBrownOrange}$(date '+%Y/%m/%d %H:%M:%S %Z')${CNone}"
 echo ""

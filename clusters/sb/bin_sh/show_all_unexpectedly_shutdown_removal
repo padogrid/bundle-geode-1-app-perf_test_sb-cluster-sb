@@ -46,7 +46,7 @@ while IFS= read -r line; do
 done < "$TMP_FILE"
 unset IFS
 echo ""
-rm $TMP_FILE
+rm $TMP_FILE > /dev/null 2>&1
 popd > /dev/null 2>&1
 
 echo "The members unexpectedly removed from the cluster maybe still running. If so, it is"

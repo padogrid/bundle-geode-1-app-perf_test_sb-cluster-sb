@@ -1,13 +1,14 @@
 # Type 5 Recovery Steps
 
-In Type 5, members are able to communicate with locators but members themselves are not able to communicate with each other.
+In Type 5, members are able to communicate with locators but members themselves are not able to communicate with each other. This type is the most difficult one to troubleshoot.
 
 1. Fix network issues if any.
 
 If there were network issues and they have been resolved:
 
-2. The cluster should be back to normal. Data loss is not expected.
-3. Nonetheless, check for data loss and inconsistency, and be prepared to reingest data as needed.
+2. If the cluster returns to the normal state, then data loss is not expected. Regardless, check for data loss and inconsistency, and be prepared to reingest data as needed.
+3. Otherwise, if the cluster is still in Type 5, then identify the cache servers that have stuck threads and restart one at a time.
+4. Upon restarting the last cache server, check for data consistency.
 4. Check client applications.
 
 If there were no network issues:

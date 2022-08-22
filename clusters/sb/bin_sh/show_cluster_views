@@ -40,6 +40,9 @@ OPTIONS
    -long
              If specified, displays unfiltered log messages
 
+   -count view_count
+             Displays the specified number of last views per log file. If unspecified, then displays all views.
+
 DEFAULT:
    ./$EXECUTABLE -type received -locator
 
@@ -68,9 +71,7 @@ FILTER2="these members failed to respond to the view change"
 
 TIMESTAMP=`date +%y%m%d-%H%M%S`
 TMP_FILE="/tmp/padogrid-$EXECUTABLE-$TIMESTAMP.log"
-if [ -f $TMP_FILE ]; then
-   rm $TMP_FILE
-fi
+rm $TMP_FILE > /dev/null 2>&1
 pushd $APP_LOG_DIR > /dev/null 2>&1
 grep -e "$FILTER" -e "$FILTER2" $LOG_FILES > $TMP_FILE
 echo ""
@@ -197,7 +198,7 @@ while IFS= read -r line; do
 #   grep "$line" *locator*.log | awk '!a[$0]++'
 done < "$TMP_FILE"
 unset IFS
-rm $TMP_FILE
+rm $TMP_FILE > /dev/null 2>&1
 popd > /dev/null 2>&1
 
 echo ""
