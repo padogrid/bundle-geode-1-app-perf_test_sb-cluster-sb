@@ -94,3 +94,13 @@ function unique_words
      echo `trimString "$__unique_words"`
    fi
 }
+
+# 
+# Returns "true" if number, else "false"
+# @param number
+#
+function isNumber
+{
+   num=$1
+   [ ! -z "${num##*[!0-9]*}" ] && echo "true" || echo "false";
+}

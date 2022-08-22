@@ -33,6 +33,12 @@ DIAG_ARG=
 DIAG_SPECIFIED=false
 NO_COLOR=false
 COUNT=
+LONG=false
+ALL=true
+ALL_SPECIFIED=false
+MEMBER_SPECIFIED=false
+LOCATOR=
+MEMBER=
 PREV=
 
 for i in "$@"
@@ -43,6 +49,10 @@ do
          DIAG_ARG=$i
       elif [ "$PREV" == "-count" ]; then
          COUNT=$i
+      elif [ "$PREV" == "-locator" ]; then
+         LOCATOR=$i
+      elif [ "$PREV" == "-member" ]; then
+         MEMBER=$i
       fi
 
    else
@@ -52,6 +62,15 @@ do
          DIAG_SPECIFIED=true
       elif [ "$i" == "-no-color" ]; then
          NO_COLOR=true
+      elif [ "$i" == "-long" ]; then
+         LONG=true
+      elif [ "$i" == "-all" ]; then
+         ALL=true
+         ALL_SPECIFIED=true
+      elif [ "$i" == "-member" ]; then
+         MEMBER_SPECIFIED=true
+      elif [ "$i" == "-locator" ]; then
+         LOCATOR_SPECIFIED=true
       fi
    fi
    PREV=$i

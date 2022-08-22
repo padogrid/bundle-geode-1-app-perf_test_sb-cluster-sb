@@ -28,11 +28,11 @@ OPTIONS
 
    -locator
              If specified, then searches the locator log files. If '-member' is also specified then
-             search all log files.
+             searches all log files.
 
    -member
              If specified, then searches the member log files. If '-locator' is also specified then
-             search all log files.
+             searches all log files.
 
    -all
              If specified, then searches all log files.
@@ -50,7 +50,7 @@ EOF
 exit
 fi
 
-if [ "$LOCATOR_SPECIFIED" == "true" ] && [ "$MEMBER_SPECIFED" == "true" ]; then
+if [ "$LOCATOR_SPECIFIED" == "true" ] && [ "$MEMBER_SPECIFIED" == "true" ]; then
    LOG_FILES="$ALL_FILES"
 elif [ "$ALL_SPECIFIED" == "true" ]; then
    LOG_FILES="$ALL_FILES"
@@ -60,6 +60,17 @@ elif [ "$MEMBER_SPECIFIED" == "true" ]; then
    LOG_FILES="$SERVER_FILES"
 else
    LOG_FILES="$LOCATOR_FILES"
+fi
+
+if [ "$COUNT" != "" ]; then
+   if [ "$(isNumber $COUNT)" == "false" ]; then
+      echo -e "${CError}ERROR:${CNone} Invalid number [$COUNT]. Command aborted."
+      exit 1
+   fi
+   if [ $COUNT -lt 0 ]; then
+      echo -e "${CError}ERROR:${CNone} Count must be greater than 0 [$COUNT]. Command aborted."
+      exit 1
+   fi
 fi
 
 if [ "$TYPE_ARG" == "sending" ]; then
@@ -74,6 +85,19 @@ TMP_FILE="/tmp/padogrid-$EXECUTABLE-$TIMESTAMP.log"
 rm $TMP_FILE > /dev/null 2>&1
 pushd $APP_LOG_DIR > /dev/null 2>&1
 grep -e "$FILTER" -e "$FILTER2" $LOG_FILES > $TMP_FILE
+
+IS_VIEW_COUNT="false"
+declare -A view_count_map
+if [ "$COUNT" != "" ]; then
+   # Determine a list of log files
+   log_files="$(cat $TMP_FILE | grep .log: | sed 's/:.*$//' | uniq)"
+   for log_file in $log_files; do
+      view_count=$(cat $TMP_FILE | grep $log_file | wc -l)
+      view_count_map[$log_file]=$view_count
+   done
+   IS_VIEW_COUNT="true"
+fi
+
 echo ""
 echo "LOG: $LOG_FILES"
 echo ""
@@ -86,6 +110,7 @@ else
 fi 
 log_file=""
 prev_log_file=$log_file
+view_count=0
 while IFS= read -r line; do
    log_file=$(echo $line | sed 's/:.*$//')
    timestamp=$(echo $line | sed -e "s/$log_file://" -e 's/^.*info //' -e "s/$CLUSTER.*$//"  -e 's/info.*//i')
@@ -93,7 +118,16 @@ while IFS= read -r line; do
    if [ "$prev_log_file" != "$log_file" ]; then
       echo ""
       prev_log_file=$log_file
+      view_count=0
    fi
+   let view_count=view_count+1
+   if [ "$IS_VIEW_COUNT" == "true" ]; then
+      let views_left=${view_count_map[$log_file]}-view_count
+      if [ $views_left -ge $COUNT ]; then
+         continue;
+      fi
+   fi
+
    if [[ "$line" == *"$FILTER2"* ]]; then
       if [ "$LONG" != "true" ]; then
          echo -e "$log_file: ${CBrownOrange}$timestamp${CNone}"
