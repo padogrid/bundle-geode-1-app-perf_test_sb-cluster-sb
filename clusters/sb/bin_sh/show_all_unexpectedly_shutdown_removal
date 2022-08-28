@@ -29,27 +29,35 @@ EOF
 exit
 fi
 
-TIMESTAMP=`date +%y%m%d-%H%M%S`
-TMP_FILE="/tmp/padogrid-$EXECUTABLE-$TIMESTAMP.log"
+if [ "$TIMESTAMP" == "" ]; then
+   TIMESTAMP=`date +%y%m%d-%H%M%S`
+fi
+
+# Trap Ctrl-C
+LAST_TIMESTAMP_TRAP=0
+trap 'cleanExit "$EXECUTABLE" "$TIMESTAMP" "false"' INT
+
+TMP_FILE1="/tmp/padogrid-$EXECUTABLE-1-$TIMESTAMP.log"
 
 pushd $APP_LOG_DIR > /dev/null 2>&1
 grep "unexpectedly shut down" $ALL_FILES | grep "Membership received a request to remove" | sed -e 's/^.*Membership received a request to remove//' -e 's/).*$/)/' -e 's/^ //' | awk '!a[$0]++' | sort > $TMP_FILE
 echo ""
 echo "Members removed from the cluster:"
 echo "---------------------------------"
-cat $TMP_FILE
+cat $TMP_FILE1
 echo ""
 echo "Last logged:"
 echo "------------"
 while IFS= read -r line; do
    grep "unexpectedly shut down" *.log | grep "Membership received a request to remove"  |grep "$line" | tail -n 1
-done < "$TMP_FILE"
+done < "$TMP_FILE1"
 unset IFS
 echo ""
-rm $TMP_FILE > /dev/null 2>&1
 popd > /dev/null 2>&1
 
 echo "The members unexpectedly removed from the cluster maybe still running. If so, it is"
 echo "possible that they have formed a cluster of their own, leading to a split-brain scenario."
 echo -e "Now: ${CBrownOrange}$(date '+%Y/%m/%d %H:%M:%S %Z')${CNone}"
 echo ""
+
+cleanExit "$EXECUTABLE" "$TIMESTAMP" "true"

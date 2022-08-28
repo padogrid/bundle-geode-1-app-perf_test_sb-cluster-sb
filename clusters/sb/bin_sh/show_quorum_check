@@ -29,11 +29,17 @@ EOF
 exit
 fi
 
-TIMESTAMP=`date +%y%m%d-%H%M%S`
-TMP_FILE1="/tmp/padogrid-1-$EXECUTABLE-$TIMESTAMP.log"
-rm $TMP_FILE1 > /dev/null 2>&1
+if [ "$TIMESTAMP" == "" ]; then
+   TIMESTAMP=`date +%y%m%d-%H%M%S`
+fi
 
-pushd $APP_LOG_DIR > /dev/null 2>&1
+# Trap Ctrl-C
+LAST_TIMESTAMP_TRAP=0
+trap 'cleanExit "$EXECUTABLE" "$TIMESTAMP" "false"' INT
+
+TMP_FILE1="/tmp/padogrid-$EXECUTABLE-1-$TIMESTAMP.log"
+
+pushd $LOG_DIR > /dev/null 2>&1
 grep 'quorum check' $LOCATOR_FILES | grep contacted > $TMP_FILE1
 log_files="$(cat $TMP_FILE1 | grep .log: | sed 's/:.*$//' | uniq)"
 
@@ -73,8 +79,9 @@ for log_file in $log_files; do
    fi
    echo ""
 done
-rm $TMP_FILE1 > /dev/null 2>&1
 popd > /dev/null 2>&1
 
 echo -e "Now: ${CBrownOrange}$(date '+%Y/%m/%d %H:%M:%S %Z')${CNone}"
 echo ""
+
+cleanExit "$EXECUTABLE" "$TIMESTAMP" "true"

@@ -26,19 +26,23 @@ EOF
 exit
 fi
 
+if [ "$TIMESTAMP" == "" ]; then
+   TIMESTAMP=`date +%y%m%d-%H%M%S`
+fi
+
+# Trap Ctrl-C
+LAST_TIMESTAMP_TRAP=0
+trap 'cleanExit "$EXECUTABLE" "$TIMESTAMP" "false"' INT
+
 FILTER1="stuck thread"
 FILTER2="wait for replies completed"
 FILTER3="has been stuck"
 
-TIMESTAMP=`date +%y%m%d-%H%M%S`
-TMP_FILE1="/tmp/padogrid-1-$EXECUTABLE-$TIMESTAMP.log"
-TMP_FILE2="/tmp/padogrid-2-$EXECUTABLE-$TIMESTAMP.log"
-TMP_FILE3="/tmp/padogrid-3-$EXECUTABLE-$TIMESTAMP.log"
-rm $TMP_FILE1 > /dev/null 2>&1
-rm $TMP_FILE2 > /dev/null 2>&1
-rm $TMP_FILE3 > /dev/null 2>&1
+TMP_FILE1="/tmp/padogrid-$EXECUTABLE-1-$TIMESTAMP.log"
+TMP_FILE2="/tmp/padogrid-$EXECUTABLE-2-$TIMESTAMP.log"
+TMP_FILE3="/tmp/padogrid-$EXECUTABLE-3-$TIMESTAMP.log"
 
-pushd $APP_LOG_DIR > /dev/null 2>&1
+pushd $LOG_DIR > /dev/null 2>&1
 grep -e "$FILTER1" -e "$FILTER2" -e "$FILTER3" $ALL_FILES > $TMP_FILE1
 # Determine a list of log files
 log_files="$(cat $TMP_FILE1 | grep .log: | sed 's/:.*$//' | uniq)"
@@ -96,8 +100,6 @@ for log_file in $log_files; do
       fi
    done < "$TMP_FILE2"
    unset IFS
-   rm $TMP_FILE2 > /dev/null 2>&1
-   rm $TMP_FILE3 > /dev/null 2>&1
    echo ""
 done
 popd > /dev/null 2>&1
@@ -110,9 +112,7 @@ echo "    $TLel last reply: $last_reply_timestamp"
 
 echo ""
 
-rm $TMP_FILE1 > /dev/null 2>&1
-rm $TMP_FILE2 > /dev/null 2>&1
-rm $TMP_FILE3 > /dev/null 2>&1
-
 echo -e "Now: ${CBrownOrange}$(date '+%Y/%m/%d %H:%M:%S %Z')${CNone}"
 echo ""
+
+cleanExit "$EXECUTABLE" "$TIMESTAMP" "true"

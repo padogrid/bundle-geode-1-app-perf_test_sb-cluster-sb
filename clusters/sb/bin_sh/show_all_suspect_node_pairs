@@ -46,15 +46,18 @@ if [ "$SUSPECT_NODES" = "" ]; then
    SUSPECT_NODES="$ALL_NODES myself"
 fi
 
-TIMESTAMP=`date +%y%m%d-%H%M%S`
-TMP_FILE_FIRST="/tmp/padogrid-first-$EXECUTABLE-$TIMESTAMP.log"
-TMP_FILE="/tmp/padogrid-1-$EXECUTABLE-$TIMESTAMP.log"
-TMP_FILE2="/tmp/padogrid-2-$EXECUTABLE-$TIMESTAMP.log"
-TMP_FILE3="/tmp/padogrid-3-$EXECUTABLE-$TIMESTAMP.log"
-rm $TMP_FILE_FIRST > /dev/null 2>&1
-rm $TMP_FILE > /dev/null 2>&1
-rm $TMP_FILE2 > /dev/null 2>&1
-rm $TMP_FILE3 > /dev/null 2>&1
+if [ "$TIMESTAMP" == "" ]; then
+   TIMESTAMP=`date +%y%m%d-%H%M%S`
+fi
+
+# Trap Ctrl-C
+LAST_TIMESTAMP_TRAP=0
+trap 'cleanExit "$EXECUTABLE" "$TIMESTAMP" "false"' INT
+
+TMP_FILE_FIRST="/tmp/padogrid-$EXECUTABLE-first-$TIMESTAMP.log"
+TMP_FILE="/tmp/padogrid-$EXECUTABLE-1-$TIMESTAMP.log"
+TMP_FILE2="/tmp/padogrid-$EXECUTABLE-2-$TIMESTAMP.log"
+TMP_FILE3="/tmp/padogrid-$EXECUTABLE-3-$TIMESTAMP.log"
 
 echo ""
 for SUSPECT_NODE in $SUSPECT_NODES; do
@@ -93,8 +96,6 @@ for SUSPECT_NODE in $SUSPECT_NODES; do
            cat $TMP_FILE3
         fi
      fi
-     rm $TMP_FILE2 > /dev/null 2>&1
-     rm $TMP_FILE3 > /dev/null 2>&1
 
      echo ""
      echo "First logged:"
@@ -117,8 +118,6 @@ for SUSPECT_NODE in $SUSPECT_NODES; do
      else
         cat $TMP_FILE3
      fi
-     rm $TMP_FILE_FIRST > /dev/null 2>&1
-     rm $TMP_FILE3 > /dev/null 2>&1
 
      echo ""
      echo "Last logged:"
@@ -141,11 +140,10 @@ for SUSPECT_NODE in $SUSPECT_NODES; do
      else
         cat $TMP_FILE3
      fi
-     rm $TMP_FILE > /dev/null 2>&1
-     rm $TMP_FILE3 > /dev/null 2>&1
    fi
    echo ""
 done
-rm $TMP_FILE $TMP_FILE2 $TMP_FILE_FIRST > /dev/null 2>&1
 
 echo -e "Now: ${CBrownOrange}$(date '+%Y/%m/%d %H:%M:%S %Z')${CNone}"
+
+cleanExit "$EXECUTABLE" "$TIMESTAMP" "true"

@@ -29,13 +29,18 @@ EOF
 exit
 fi
 
+if [ "$TIMESTAMP" == "" ]; then
+   TIMESTAMP=`date +%y%m%d-%H%M%S`
+fi
+
+# Trap Ctrl-C
+LAST_TIMESTAMP_TRAP=0
+trap 'cleanExit "$EXECUTABLE" "$TIMESTAMP" "false"' INT
 
 FILTER1="stale data"
 FILTER2="missing-disk-store"
 
-TIMESTAMP=`date +%y%m%d-%H%M%S`
 TMP_FILE="/tmp/padogrid-$EXECUTABLE-$TIMESTAMP.log"
-rm $TMP_FILE > /dev/null 2>&1
 pushd $APP_LOG_DIR > /dev/null 2>&1
 grep . $LOCATOR_FILES | sed -n -e "/$FILTER1/,/$FILTER2/p" | sed -e '/\[$/d' -e '/\]$/d' -e '/My persistent id/d' > $TMP_FILE
 grep . $SERVER_FILES | sed -n -e "/$FILTER1/,/$FILTER2/p" >> $TMP_FILE
@@ -104,8 +109,9 @@ while IFS= read -r line; do
    fi
 done < "$TMP_FILE"
 unset IFS
-rm $TMP_FILE > /dev/null 2>&1
 popd > /dev/null 2>&1
 
 echo -e "Now: ${CBrownOrange}$(date '+%Y/%m/%d %H:%M:%S %Z')${CNone}"
 echo ""
+
+cleanExit "$EXECUTABLE" "$TIMESTAMP" "true"

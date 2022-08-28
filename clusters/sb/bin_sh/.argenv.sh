@@ -39,6 +39,7 @@ ALL_SPECIFIED=false
 MEMBER_SPECIFIED=false
 LOCATOR=
 MEMBER=
+TIMESTAMP=
 PREV=
 
 for i in "$@"
@@ -53,6 +54,8 @@ do
          LOCATOR=$i
       elif [ "$PREV" == "-member" ]; then
          MEMBER=$i
+      elif [ "$PREV" == "-timestamp" ]; then
+         TIMESTAMP=$i
       fi
 
    else

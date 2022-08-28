@@ -73,6 +73,14 @@ if [ "$COUNT" != "" ]; then
    fi
 fi
 
+if [ "$TIMESTAMP" == "" ]; then
+   TIMESTAMP=`date +%y%m%d-%H%M%S`
+fi
+
+# Trap Ctrl-C
+LAST_TIMESTAMP_TRAP=0
+trap 'cleanExit "$EXECUTABLE" "$TIMESTAMP" "false"' INT
+
 if [ "$TYPE_ARG" == "sending" ]; then
    FILTER="sending new view"
 else
@@ -80,10 +88,8 @@ else
 fi
 FILTER2="these members failed to respond to the view change"
 
-TIMESTAMP=`date +%y%m%d-%H%M%S`
 TMP_FILE="/tmp/padogrid-$EXECUTABLE-$TIMESTAMP.log"
-rm $TMP_FILE > /dev/null 2>&1
-pushd $APP_LOG_DIR > /dev/null 2>&1
+pushd $LOG_DIR > /dev/null 2>&1
 grep -e "$FILTER" -e "$FILTER2" $LOG_FILES > $TMP_FILE
 
 IS_VIEW_COUNT="false"
@@ -232,9 +238,10 @@ while IFS= read -r line; do
 #   grep "$line" *locator*.log | awk '!a[$0]++'
 done < "$TMP_FILE"
 unset IFS
-rm $TMP_FILE > /dev/null 2>&1
 popd > /dev/null 2>&1
 
 echo ""
 echo -e "Now: ${CBrownOrange}$(date '+%Y/%m/%d %H:%M:%S %Z')${CNone}"
 echo ""
+
+cleanExit "$EXECUTABLE" "$TIMESTAMP" "true"

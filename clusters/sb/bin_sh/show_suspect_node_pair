@@ -50,10 +50,15 @@ if [ "$SUSPECT_NODE" == "" ] || [ "$FOR_NODE" == "" ]; then
    exit 1
 fi
 
-TIMESTAMP=`date +%y%m%d-%H%M%S`
-TMP_FILE="/tmp/padogrid-1-$EXECUTABLE-$TIMESTAMP.log"
+if [ "$TIMESTAMP" == "" ]; then
+   TIMESTAMP=`date +%y%m%d-%H%M%S`
+fi
 
-rm $TMP_FILE > /dev/null 2>&1
+# Trap Ctrl-C
+LAST_TIMESTAMP_TRAP=0
+trap 'cleanExit "$EXECUTABLE" "$TIMESTAMP" "false"' INT
+
+TMP_FILE="/tmp/padogrid-$EXECUTABLE-1-$TIMESTAMP.log"
 
 #
 # Log files and time stamps excluded
@@ -78,5 +83,6 @@ else
    done < "$TMP_FILE"
 fi
 unset IFS
-rm $TMP_FILE > /dev/null 2>&1
 popd > /dev/null 2>&1
+
+cleanExit "$EXECUTABLE" "$TIMESTAMP" "true"
