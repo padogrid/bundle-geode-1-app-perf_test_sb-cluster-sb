@@ -127,7 +127,7 @@ function isNumber
 # You can also exit without Ctrl-C by passing in "true" as described below.
 #
 # @param    executable_list  Space separted executable names in double quotes. Required.
-# @param    postfix  Postfix file name part comes after the executable name, e.g., timestamp.
+# @param    postfix  Postfix file name part comes after the executable name, e.g., timestamp. Required.
 # @param    isExit "true" to exit, others to exit if the current time is less than LAST_TIMESTAMP_TRAP. Required.
 #
 function cleanExit
