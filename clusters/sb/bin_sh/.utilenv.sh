@@ -106,41 +106,39 @@ function isNumber
 }
 
 #
-# Removes  all temporary files assigned by the following variables and invokes exit.
-#    TMP_FILE, TMP_FILE1, TMP_FILE2, TMP_FILE, TMP_FILE_FIRST
+# Removes all generated temporary files that have the following name pattern.
+#
+#   /tmp/padogrid-$EXECUTABLE-*$POSTFIX*" 
+#
+# where EXECUTABLE is the executable name,
+#       POSTFIX is any postfix file name part that comes after $EXECUTABLE, e.g., timestamp. 
 #
 # This function is for cleaning up files upon receiving Ctrl-C. To trap Ctrl-C, add
 # the following lines in your script.
 #
 #    LAST_TIMESTAMP_TRAP=0
-#    trap 'cleanExit "$EXECUTABLE" "$TIMESTAMP" "false"' INT
+#    trap 'cleanExit "$EXECUTABLE" "$POSTFIX" "false"' INT
 #
 # If the executable is executing other scripts that also generate temporary files then the first
 # argument must be a space separated list of those script names including the executable name
 # itself.
-#
-# The temporary file names have the following pattern.
-#
-#   /tmp/padogrid-$EXECUTABLE-*$TIMESTAMP*" 
-#
-# Note that you must hit Ctrl-C twice (first for the subshell and the second for the parent shell)
 # before the exit is invoked.
 #
 # You can also exit without Ctrl-C by passing in "true" as described below.
 #
 # @param    executable_list  Space separted executable names in double quotes. Required.
-# @param    timestamp  Timestamp that is part of the temporarry file names.
+# @param    postfix  Postfix file name part comes after the executable name, e.g., timestamp.
 # @param    isExit "true" to exit, others to exit if the current time is less than LAST_TIMESTAMP_TRAP. Required.
 #
 function cleanExit
 {
    local EXECUTABLES="$1"
-   local TIMESTAMP="$2"
+   local POSTFIX="$2"
    local IS_EXIT="$3"
    if [ "$EXECUTABLES" != "" ]; then
       if  [ "$IS_EXIT" == "true" ] || [ $(date +%s) -lt $(( $LAST_TIMESTAMP_TRAP + 1 )) ]; then
          for i in $EXECUTABLES; do
-            rm /tmp/padogrid-$i-*$TIMESTAMP* > /dev/null 2>&1
+            rm /tmp/padogrid-$i-*$POSTFIX* > /dev/null 2>&1
          done
          exit
       elif [ "$IS_EXIT" != "true" ]; then
