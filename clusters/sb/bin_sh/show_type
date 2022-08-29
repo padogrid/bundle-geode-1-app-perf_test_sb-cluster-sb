@@ -98,7 +98,6 @@ last_restarted_in_seconds=0
 last_failure_in_seconds=0
 is_membership_failure="false"
 ./show_membership_service_failure -no-color -timestamp $TIMESTAMP > $TMP_FILE1
-cat $TMP_FILE1
 if [ "$(cat $TMP_FILE1 | grep 'Membership service failure')" != "" ]; then
    if [ "$(cat $TMP_FILE1 | grep 'system restarted')" != "" ]; then
       last_restarted_timestamp=$(./show_membership_service_failure -no-color -timestamp $TIMESTAMP | grep -B 1 'system restarted' | grep "$TTee" | sed -e "s/$TTee //" | sort | tail -n 1)
@@ -133,7 +132,7 @@ if [ "$is_membership_failure" != "true" ]; then
          echo -e "       type: ${CError}$type${CNone}"
          echo ""
          show_recovery $type
-         cleanExit "true"
+         cleanExit "$EXECUTABLE_LIST" "$TIMESTAMP" "true"
       fi
    fi
 fi
@@ -298,7 +297,7 @@ if [ "$is_membership_failure" == "true" ] && [ "$last_restarted_timestamp" == ""
    echo -e "       type: ${CError}$type${CNone}"
    echo ""
    show_recovery $type
-   cleanExit "true"
+   cleanExit "$EXECUTABLE_LIST" "$TIMESTAMP" "true"
 fi
 
 FILTER1="coordinator"
@@ -523,7 +522,7 @@ if [ "$last_restarted_timestamp" != "" ]; then
          echo -e "       type: ${CError}$type${CNone}"
          echo ""
          show_recovery $type
-         cleanExit "true"
+         cleanExit "$EXECUTABLE_LIST" "$TIMESTAMP" "true"
       fi
 
       prev_weight=0
@@ -572,7 +571,7 @@ if [ "$last_restarted_timestamp" != "" ]; then
                echo -e "       type: ${CError}$type${CNone}"
                echo ""
                show_recovery $type
-               cleanExit "true"
+               cleanExit "$EXECUTABLE_LIST" "$TIMESTAMP" "true"
             else
                echo "  diagnosis: Missing disk stores found but they are older than the last view and there are no crashed members reported since."
             fi
@@ -584,7 +583,7 @@ if [ "$last_restarted_timestamp" != "" ]; then
             echo -e "       type: ${CGo}normal${CNone} or ${CError}1${CNone}"
             echo ""
             show_recovery "1"
-            cleanExit "true"
+            cleanExit "$EXECUTABLE_LIST" "$TIMESTAMP" "true"
          fi
       else
          #
@@ -596,7 +595,7 @@ if [ "$last_restarted_timestamp" != "" ]; then
             echo -e "       type: ${CError}$type${CNone}"
             echo ""
             show_recovery $type
-            cleanExit "true"
+            cleanExit "$EXECUTABLE_LIST" "$TIMESTAMP" "true"
          fi
       fi
    else
@@ -614,7 +613,7 @@ if [ "$last_restarted_timestamp" != "" ]; then
          echo -e "       type: ${CError}$type${CNone}"
          echo ""
          show_recovery $type
-         cleanExit "true"
+         cleanExit "$EXECUTABLE_LIST" "$TIMESTAMP" "true"
       else
         echo ""
         echo "  diagnosis: Check locator log files for 'quorum check'. If 'quorum check' repeatedly fails then Type 3, otherwise Type 4."
@@ -624,7 +623,7 @@ if [ "$last_restarted_timestamp" != "" ]; then
          echo -e "       type: ${CError}$type${CNone}"
          echo ""
          show_recovery $type
-         cleanExit "true"
+         cleanExit "$EXECUTABLE_LIST" "$TIMESTAMP" "true"
       fi
    fi
 fi
@@ -714,7 +713,7 @@ if [ "$last_stuck_thread_timestamp" != "" ] || [ "$is_suspect" == "true" ]; then
       echo -e "       type: ${CError}$type${CNone}"
       echo ""
       show_recovery $type
-      cleanExit "true"
+      cleanExit "$EXECUTABLE_LIST" "$TIMESTAMP" "true"
    fi
 fi
 
