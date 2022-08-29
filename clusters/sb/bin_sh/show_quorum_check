@@ -74,7 +74,7 @@ for log_file in $log_files; do
       if [ $diff -lt 0 ]; then
          echo -e "$TLel           weight sum diff: ${CError}$diff${CNone}"
       else
-         echo "$TLel           weight sum diff: ${CGo}$diff${CNone}"
+         echo -e "$TLel           weight sum diff: ${CGo}$diff${CNone}"
       fi
    fi
    echo ""
