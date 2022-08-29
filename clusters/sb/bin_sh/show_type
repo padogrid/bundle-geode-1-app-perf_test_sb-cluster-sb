@@ -185,8 +185,13 @@ echo "     last view: $last_view_timestamp"
 # remaining_crashed_members --> all members remain crashed
 FILTER="received new view"
 pushd $APP_LOG_DIR > /dev/null 2>&1
-crashed_members=$(grep "$FILTER" $LOCATOR_FILES |grep crashed: | sed -e 's/^.*crashed: //' -e 's/\[//' -e 's/(.*$//' | sort -u)
+__crashed_members=$(grep "$FILTER" $LOCATOR_FILES |grep crashed: | sed -e 's/^.*crashed: //' -e 's/\[//'  -e 's/\]//' | tail -n 1 | sed -e 's/,/ /g')
 popd > /dev/null 2>&1
+crashed_members=""
+for i in $__crashed_members; do
+   member=$(echo $i | sed -e 's/(.*$//')
+   crashed_members="$crashed_members $member"
+done
 crashed_members=$(echo $crashed_members | xargs -n1 | sort -u | xargs)
 
 timestamp_search=$(echo $last_view_timestamp | sed 's/\//\\\//g')
@@ -560,7 +565,7 @@ if [ "$last_restarted_timestamp" != "" ]; then
             else
                is_missing_disk_stores_newer="false"
             fi
-            if [ "$is_missing_disk_stores_newer" == "true" ] && [ "$remaining_crashed_members" != "" ]; then
+            if [ "$is_missing_disk_stores_newer" == "true" ] && ([ "$remaining_crashed_members" != "" ] ||  [ $last_restarted_in_seconds -gt $last_view_time_in_seconds ]); then
                echo "  diagnosis: Missing disk stores found"
                if [ "$is_weights_differ" != "true" ] && [ "$sb_locators" == "" ]; then
                   type="1"

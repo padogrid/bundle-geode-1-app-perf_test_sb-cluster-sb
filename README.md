@@ -1522,7 +1522,7 @@ Output:
 - After 26 seconds, the coordinator logs a possible network partition. It then proceeds to restart the cluster.
 - It took nearly five (5) minutes for Geode/GemFire to resolve the network partition by restarting the entire cluster.
 - With the cluster restarted, there are now only three (3) members as expected. All non-persistent data is lost and clients are unable to connect to the split cluster (Split B).
-- `gfsh` is able to connect to Split B but partition persisten regions are not accessible. The `describe region` hangs indefinitely on a partition persistent region. It eventually returns when the splits are merged.
+- `gfsh` is able to connect to Split B but partition persistent regions are not accessible. The `describe region` hangs indefinitely on a partition persistent region. It eventually returns when the splits are merged.
 - Upon merging the splits, we saw the network-isolated members (in Split A) automatically rejoin the cluster, but without non-persistent data as expected. 
 - The cluster has completely recovered the persistent data.
 - If we were to reinstate the cluster only with the members in the quorum, i.e, Split B members, then we needed to revoke disk stores, which restored the cluster without the data held by the Split A members.

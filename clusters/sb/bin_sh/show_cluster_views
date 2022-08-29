@@ -141,7 +141,7 @@ while IFS= read -r line; do
          echo $line | sed "s/$FILTER2.*$//"
       fi
       line=$(echo $line | sed -e "s/^.*${FILTER2}: //" -e "s/\[//g" -e "s/\]//g")
-      echo "$TTee $FILTER2"
+      echo -e "$TTee ${CError}$FILTER2${CNone}"
       members=$line
    else
       if [ "$LONG" != "true" ]; then
