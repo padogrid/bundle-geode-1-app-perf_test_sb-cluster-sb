@@ -114,28 +114,6 @@ fi
 # Cluster views
 ./show_cluster_views -no-color -timestamp $TIMESTAMP > $TMP_FILE1
 
-if [ "$is_membership_failure" != "true" ]; then
-   line_count=$(cat $TMP_FILE1 | sed '/crashed/h;//!H;$!d;x' | wc -l)
-   crashed_count=$(cat $TMP_FILE1 | sed '/crashed/h;//!H;$!d;x' | grep 'crashed:' | sed 's/.*crashed:.* //')
-   if [ "$line_count" == "5" ] && [ "$crashed_count" != "" ]; then
-      crashed_members=$(cat $TMP_FILE1 | sed '/crashed/h;//!H;$!d;x' | grep -A $crashed_count 'crashed:' | sed '/crashed/d' | sed -e 's/^.* //')
-
-      echo ""
-      for i in $crashed_members; do
-         echo -e "    crashed: $i"
-      done
-
-      # Type 0
-      if [ $crashed_count -eq 1 ]; then
-         type="0"
-         echo ""
-         echo -e "       type: ${CError}$type${CNone}"
-         echo ""
-         show_recovery $type
-         cleanExit "$EXECUTABLE_LIST" "$TIMESTAMP" "true"
-      fi
-   fi
-fi
 
 #
 # Get cluster views
@@ -180,6 +158,29 @@ if [ "$last_restarted_timestamp" != "" ]; then
 fi
 echo "     last view: $last_view_timestamp"
 
+if [ $last_view_time_in_seconds -gt $last_failure_in_seconds ]; then
+   line_count=$(cat $TMP_FILE1 | sed '/crashed/h;//!H;$!d;x' | wc -l)
+   crashed_count=$(cat $TMP_FILE1 | sed '/crashed/h;//!H;$!d;x' | grep 'crashed:' | sed 's/.*crashed:.* //')
+   if [ "$line_count" == "5" ] && [ "$crashed_count" != "" ]; then
+      crashed_members=$(cat $TMP_FILE1 | sed '/crashed/h;//!H;$!d;x' | grep -A $crashed_count 'crashed:' | sed '/crashed/d' | sed -e 's/^.* //')
+
+      echo ""
+      for i in $crashed_members; do
+         echo -e "    crashed: $i"
+      done
+
+      # Type 0
+      if [ $crashed_count -eq 1 ]; then
+         type="0"
+         echo ""
+         echo -e "       type: ${CError}$type${CNone}"
+         echo ""
+         show_recovery $type
+         cleanExit "$EXECUTABLE_LIST" "$TIMESTAMP" "true"
+      fi
+   fi
+fi
+
 # Get all crashed members and check if they are in the last view
 # rejoined_crashed_members --> all members crashed and rejoined the cluster
 # remaining_crashed_members --> all members remain crashed
@@ -198,11 +199,15 @@ timestamp_search=$(echo $last_view_timestamp | sed 's/\//\\\//g')
 cat $TMP_FILE1 | grep -A 100 "$last_view_timestamp" | sed -n "/$timestamp_search/,/weight:/p" > $TMP_FILE2
 rejoined_crashed_members=""
 remaining_crashed_members=""
+rejoined_crashed_member_count=0
+remaining_crashed_member_count=0
 if [ "$(cat $TMP_FILE2 | grep crashed:)" == "" ]; then
    for i in $crashed_members; do 
       if [ "$(cat $TMP_FILE2 | grep $i)" != "" ]; then
+         let rejoined_crashed_member_count=rejoined_crashed_member_count+1
          rejoined_crashed_members="$rejoined_crashed_members $i"
       else
+         let remaining_crashed_member_count=remaining_crashed_member_count+1
          remaining_crashed_members="$remaining_crashed_members $i"
       fi
    done
