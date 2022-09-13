@@ -450,6 +450,7 @@ The `sb/bin_sh` folder also contains log scraping scripts as follows. These scri
 
 | Script                                 | Description                                                                  |
 | -------------------------------------- | ---------------------------------------------------------------------------- |
+| revoke_all_missing_disk_stores         | Iteratively revoke all missing data stores                                   |
 | show_all_suspect_node_pairs            | Find the specified suspect node from all log files                           |
 | show_all_unexpectedly_left_members     | Display unexpectedly left members in chronological order                     |
 | show_all_unexpectedly_shutdown_removal | Find the members that unexpectedly shutdown for removal from the cluster     |
