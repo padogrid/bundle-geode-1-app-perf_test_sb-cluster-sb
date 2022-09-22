@@ -66,7 +66,7 @@ This bundle provides scripts, configuration files, and apps for creating a Geode
 ## Installing Bundle
 
 ```console
-install_bundle -download bundle-geode-1-app-perf_test_sb-cluster-sb
+install_bundle -download -workspace bundle-geode-1-app-perf_test_sb-cluster-sb
 ```
 
 ## Use Case
@@ -165,7 +165,7 @@ tar -C ~/Padogrid/products ~/Downloads/pivotal-gemfire-9.10.16.tgz
 update_product -product gemfire
 ```
 
-The `create_workspace` command shown below assumes the following proucts installed.
+The `create_pod` command shown below assumes the following products installed.
 
 | Software for Host OS | Host OS Path                                  |
 | ---------------------| --------------------------------------------- |
@@ -253,17 +253,16 @@ Output:
 192.168.56.17 node-07 node-07.local
 ```
 
-Copy and paste the output in each host's `/etc/hosts` file. Make sure to comment out the `127.0.0.1` entry as shown in the example below.
+Copy and paste the output in pnode's `/etc/hosts` file. Make sure to comment out or remove the `127.0.1.1` entry as shown in the example below.
 
 ```bash
-ssh node-01.local
 sudo vi /etc/hosts
 ```
 
 Edit `/etc/hosts`:
 
 ```console
-#127.0.1.1 node-01 node-01
+#127.0.1.1 pnode
 192.168.56.10 pnode pnode.local
 192.168.56.11 node-01 node-01.local
 192.168.56.12 node-02 node-02.local
@@ -272,6 +271,12 @@ Edit `/etc/hosts`:
 192.168.56.15 node-05 node-05.local
 192.168.56.16 node-06 node-06.local
 192.168.56.17 node-07 node-07.local
+```
+
+Once you have pnode's `/etc/hosts` file updated, deploy it to all the remaining nodes as shown below.
+
+```bash
+for i in $(seq 1 7); do scp /etc/hosts node-0$i.local:/tmp/; ssh -n node-0$i.local "sudo mv /tmp/hosts /etc/"; done
 ```
 
 ### 3. Start Cluster
