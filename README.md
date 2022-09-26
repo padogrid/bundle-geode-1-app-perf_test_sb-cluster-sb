@@ -231,7 +231,18 @@ switch_cluster sb/bin_sh
 
 ### 2. Update `/etc/hosts`
 
-Due to Vagrant security restrictions, we need to edit each node's `/etc/hosts` and add a respective host name entry. The included `list_etc_host` script lists all the VM host names defined in the `etc/cluster.properties`.
+#### Automatic update
+
+Due to Vagrant security restrictions, we need to edit each node's `/etc/hosts` and add a respective host name entry. We can do this manually one file at a time or run the included `update_etc_hosts` to automatically update each node's `/etc/hosts` file.
+
+From `pnode.local`, run `update_etc_hosts` as follows.
+
+```bash
+cd_cluster sb/bin_sh
+./update_etc_hosts
+```
+
+This bundle also includes the `list_etc_host` script which lists all the VM host names defined in the `etc/cluster.properties`. If the `update_etc_hosts` script fails to update `/etc/hosts` then you can run this script to list the node entries and copy/paste them into each node's `/etc/hosts` file. Make sure to comment out the `127.0.1.1` entry from each node's `/etc/hosts`.
 
 From `pnode.local`, run `list_etc_hosts` as follows.
 
@@ -251,32 +262,6 @@ Output:
 192.168.56.15 node-05 node-05.local
 192.168.56.16 node-06 node-06.local
 192.168.56.17 node-07 node-07.local
-```
-
-Copy and paste the output in pnode's `/etc/hosts` file. Make sure to comment out or remove the `127.0.1.1` entry as shown in the example below.
-
-```bash
-sudo vi /etc/hosts
-```
-
-Edit `/etc/hosts`:
-
-```console
-#127.0.1.1 pnode
-192.168.56.10 pnode pnode.local
-192.168.56.11 node-01 node-01.local
-192.168.56.12 node-02 node-02.local
-192.168.56.13 node-03 node-03.local
-192.168.56.14 node-04 node-04.local
-192.168.56.15 node-05 node-05.local
-192.168.56.16 node-06 node-06.local
-192.168.56.17 node-07 node-07.local
-```
-
-Once you have pnode's `/etc/hosts` file updated, deploy it to all the remaining nodes as shown below.
-
-```bash
-for i in $(seq 1 7); do scp /etc/hosts node-0$i.local:/tmp/; ssh -n node-0$i.local "sudo mv /tmp/hosts /etc/"; done
 ```
 
 ### 3. Start Cluster

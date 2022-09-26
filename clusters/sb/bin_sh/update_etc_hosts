@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
+. $SCRIPT_DIR/.addonenv.sh
+
+BASE_DIR="$(dirname "$SCRIPT_DIR")"
+
+EXECUTABLE="`basename $0`"
+
+if [ "$HELP" == "true" ]; then
+cat <<EOF
+
+WORKSPACE
+   $PADOGRID_WORKSPACE
+
+NAME
+   $EXECUTABLE - Update host entries in /etc/hosts
+
+SYNOPSIS
+   ./$EXECUTABLE [-?]
+
+DESRIPTION
+   Updates each node's '/etc/hosts' with all the node entries. This is required in order to
+   override the 127.0.1.1 (and 127.0.2.1) entry.
+
+EOF
+exit
+fi
+
+PNODE_HOST="pnode.local"
+SERVER_HOSTS=$(getClusterProperty "vm.hosts" | sed 's/,/ /g')
+LOCATOR_HOSTS=$(getClusterProperty "vm.locator.hosts" | sed 's/,/ /g')
+
+ALL_HOSTS="$PNODE_HOST $SERVER_HOSTS $LOCATOR_HOSTS"
+
+if [ -f /tmp/hosts ]; then
+   rm /tmp/hosts
+fi
+
+
+# Remove 127.0.1.1/127.0.1.2 and all nodes from /etc/hosts and place the file in /tmp/hosts
+sed -e '/127.0.[1-9].1/d' -e '/pnode/d' -e '/node-/d' /etc/hosts > /tmp/hosts
+
+# Append nodes to /tmp/hosts
+for HOST in $ALL_HOSTS; do
+   HOSTNAME=${HOST%.local}
+   ADDRESS=$(ping -c 1 $HOST | grep PING | sed -e "s/^.*$HOST//" -e 's/).*//' -e 's/^.*(//')
+   echo "$ADDRESS $HOSTNAME $HOST" >> /tmp/hosts
+done
+
+# Copy /tmp/hosts to all nodes
+for HOST in $ALL_HOSTS; do
+   scp /tmp/hosts $HOST:/tmp/hosts
+done
+
+# Move /tmp/hosts to /etc/hosts in all nodes
+for HOST in $ALL_HOSTS; do
+   ssh -qn $HOST "sudo mv /tmp/hosts /etc/hosts"
+done

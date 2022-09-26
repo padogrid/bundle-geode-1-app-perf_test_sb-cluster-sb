@@ -25,6 +25,8 @@ DESRIPTION
    This is required in order to override the 127.0.1.1 entry. Make sure to comment out the 
    127.0.1.1 entry as shown in the example below.
 
+   Run 'update_etc_hosts' instead to automatically update the /etc/hosts file.
+
 EXAMPLE:
    ssh node-01.local
    sudo vi /etc/hosts
