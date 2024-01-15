@@ -134,7 +134,7 @@ We need the following products installed before wen can setup Vagrant VMs. Downl
 - [Geode](https://archive.apache.org/dist/geode/) or [GemFire](https://network.pivotal.io/products/pivotal-gemfire)
 - [Linux JDK](https://www.oracle.com/java/technologies/javase-downloads.html)
 
-Assuming you have installed PadoGrid in the default directory, untar the downloaded tarballs in the `~/Padogrid/products/linux` directory as shown in the example below. If you have installed PadoGrid in a different directory, then make the appriate changes.
+Assuming you have installed PadoGrid in the default directory, untar the downloaded tarballs in the `~/Padogrid/products/linux` directory as shown in the example below. If you have installed PadoGrid in a different directory, then make the appropriate changes.
 
 ```bash
 mkdir ~/Padogrid/products/linux
@@ -155,7 +155,7 @@ Inflating the tarballs creates the following directories.
 
 ### 2. Install Geode or GemFire on host OS
 
-:pencil2: *In the previous section, we have installed software for the Vagrant VMs. If your host OS is Linux then you can use the same software by specifying the same directories.*
+✏️  *In the previous section, we have installed software for the Vagrant VMs. If your host OS is Linux then you can use the same software by specifying the same directories.*
 
 By default, PadoGrid installs all the products the `~/Padogrid/product` directory. If you have not installed Geode in that directory, then do so now by running the following commands.
 
@@ -285,7 +285,7 @@ show_cluster
 
 Enter the following URL in your browser to monitor the cluster from the Geode Pulse.
 
-[http://pnode.local:7070/pulse](http://pnode.local:7070/pulse)
+<http://node-06.local:7070/pulse>
 
 ![Pulse Schreenshot](images/pulse-start.png)
 
@@ -528,7 +528,7 @@ This bundle includes the `show_type` script that can be run at any time to check
 
 Technically, this type does not represent a split-brain scenario. Since we have configured Geode/GemFire to store two (2) copies of data, if a single data node fails, Geode/GemFire will simply continue to serve the backup copy of data as if nothing happened. Nontheless, we include this type for completeness.
 
-:pencil2: Note that if we have configured Geode/GemFire with a single copy of data, then a single data node failure leads to Type 1.
+✏️  Note that if we have configured Geode/GemFire with a single copy of data, then a single data node failure leads to Type 1.
 
 | Split | Weight   | VM Hosts                                                        |
 | ----- | -------- | --------------------------------------------------------------- |
@@ -1221,7 +1221,7 @@ Caused by: java.net.UnknownHostException: node-07.local
 
 Running `gfsh` shows the members in Split B are inact but we are unable to check the persistent status.
 
-:pencil2: *You won't be able to connect to the cluster (Split B) via `gfsh` until a quorum (Split B) is established. This will take a few minutes. You can run `show_cluster_views` or `show_membership_service_failure` to check the cluster status in the meantime.*
+✏️  *You won't be able to connect to the cluster (Split B) via `gfsh` until a quorum (Split B) is established. This will take a few minutes. You can run `show_cluster_views` or `show_membership_service_failure` to check the cluster status in the meantime.*
 
 ```bash
 gfsh
@@ -1412,11 +1412,11 @@ group: g1
 
 #### Type 1 - Non-Merger
 
-:pencil2: *To run this test, you will need to restart the cluster if you have already merged the splits. Please follow the restart steps shown in the beginning of this test case.*
+✏️  *To run this test, you will need to restart the cluster if you have already merged the splits. Please follow the restart steps shown in the beginning of this test case.*
 
 If we choose not to merge the splits, then you can revoke missing disk stores so that the members in Split B can join the cluster. We would lose data held by the members in Split A, however. The following `gfsh` output shows the outcome of revoking disk stores.
 
-:pencil2: *You may not be able to connect via `gfsh` until the cluster has been auto-restarted, which may take a few minutes. You can run `./show_membership_service_failure` to check the restart status.*
+✏️  *You may not be able to connect via `gfsh` until the cluster has been auto-restarted, which may take a few minutes. You can run `./show_membership_service_failure` to check the restart status.*
 
 ```bash
 gfsh
@@ -1916,7 +1916,7 @@ group: g1
 
 Restart the cluster and ingest data.
 
-:exclamation: *Make sure to run **`start_cluster_lead_3`**, not `start_cluster_lead_1` for this test case. In this test case, **node-03** is the lead.*
+❗ *Make sure to run **`start_cluster_lead_3`**, not `start_cluster_lead_1` for this test case. In this test case, **node-03** is the lead.*
 
 ```bash
 # Kill the cluster and clean all log and persistent files
@@ -3147,7 +3147,7 @@ In Type 1, cache servers are isolated.
 9. GemFire is expected to fully recover persistent data.
 10. Reingest non-persistent data.
 
-:exclamation: Be aware that auto-restart can take a long time to complete depending on the data volume, disk speeds, and the number of failed members. For our simple cluster, it took nearly five (5) minutes. Expect a much longer time to complete for larger clusters.
+❗ Be aware that auto-restart can take a long time to complete depending on the data volume, disk speeds, and the number of failed members. For our simple cluster, it took nearly five (5) minutes. Expect a much longer time to complete for larger clusters.
 
 #### Type 2 Recovery Steps
 
