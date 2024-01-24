@@ -26,9 +26,9 @@ EOF
 exit
 fi
 
-echo ssh -qn pnode.local "sudo apt-get install ntp"
-ssh -qn pnode.local "sudo apt-get -y install ntp"
+echo ssh -o StrictHostKeyChecking=no -qn pnode.local "sudo apt-get install ntp"
+ssh -o StrictHostKeyChecking=no -qn pnode.local "sudo apt-get -y install ntp"
 for i in $(seq 7); do
-   echo ssh -qn node-0$i.local "sudo apt-get install ntp"
-   ssh -qn node-0$i.local "sudo apt-get -y install ntp"
+   echo ssh -o StrictHostKeyChecking=no -qn node-0$i.local "sudo apt-get install ntp"
+   ssh -o StrictHostKeyChecking=no -qn node-0$i.local "sudo apt-get -y install ntp"
 done

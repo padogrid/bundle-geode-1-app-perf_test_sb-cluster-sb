@@ -1,5 +1,5 @@
 # ========================================================================
-# Copyright (c) 2020 Netcrest Technologies, LLC. All rights reserved.
+# Copyright (c) 2020-2023 Netcrest Technologies, LLC. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,15 +36,13 @@ JAVA_OPTS="-Xms1g -Xmx1g"
 
 # GEMFIRE_PROPERTY_FILE defaults to etc/client-gemfire.properties
 # GEODE_CLIENT_CONFIG_FILE defaults to etc/client-cache.xml
-JAVA_OPTS="$JAVA_OPTS -DgemfirePropertyFile=$GEMFIRE_PROPERTY_FILE"
-
-if [ "$TYPE_ARG" == "servers" ]; then
-   GEODE_CLIENT_CONFIG_FILE="$APP_ETC_DIR/client-cache-servers.xml"
-fi
-JAVA_OPTS="-Dgemfire.cache-xml-file=$GEODE_CLIENT_CONFIG_FILE"
+JAVA_OPTS="$JAVA_OPTS -DgemfirePropertyFile=$GEMFIRE_PROPERTY_FILE \
+	-Dgemfire.cache-xml-file=$GEODE_CLIENT_CONFIG_FILE"
 
 # Hibernate
 JAVA_OPTS="$JAVA_OPTS -Dgeode-addon.hibernate.config=$APP_ETC_DIR/hibernate.cfg-mysql.xml"
+#JAVA_OPTS="$JAVA_OPTS -Dgeode-addon.hibernate.config=$APP_ETC_DIR/hibernate.cfg-postgresql.xml"
+#JAVA_OPTS="$JAVA_OPTS -Dgeode-addon.hibernate.config=$APP_ETC_DIR/hibernate.cfg-derby.xml"
 
 # CLASSPATH="$CLASSPATH"
 

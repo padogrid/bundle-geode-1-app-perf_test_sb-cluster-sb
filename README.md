@@ -127,20 +127,48 @@ We will be taking the following steps as we setup and run the environment.
 
 Follow the instructions in the subsequent sections.
 
-### 1. Install Linux products
+### 1. Install Geode or GemFire on host OS
 
-We need the following products installed before wen can setup Vagrant VMs. Download their tarball distributions by following the links.
+By default, PadoGrid installs all the products in the `~/Padogrid/products` directory. If you have not installed Geode or GemFire in that directory, then do so now by following the instructions in one of the following subsections.
 
-- [Geode](https://archive.apache.org/dist/geode/) or [GemFire](https://network.pivotal.io/products/pivotal-gemfire)
+#### 1.1. Install Geode
+
+```bash
+# Geode: Install Geode on Host OS if not already installed
+install_padogrid -product geode
+update_product -product geode
+```
+
+#### 1.2. Install GemFire
+
+Download [GemFire](https://network.pivotal.io/products/pivotal-gemfire) into the `~/Downloads` directory and execute the following.
+
+```bash
+# GemFire: Install GemFire on Host OS if not already installed
+tar -C ~/Padogrid/products ~/Downloads/pivotal-gemfire-9.10.16.tgz
+update_product -product gemfire
+```
+
+### 2. Install Linux products for Guest OS (Vagrant VMs)
+
+We also need Geode/GemFire and Java installed for Linux before we can setup Vagrant VMs. Download a Linux JDK tarball from the following link.
+
 - [Linux JDK](https://www.oracle.com/java/technologies/javase-downloads.html)
 
-Assuming you have installed PadoGrid in the default directory, untar the downloaded tarballs in the `~/Padogrid/products/linux` directory as shown in the example below. If you have installed PadoGrid in a different directory, then make the appropriate changes.
+If your host OS is Linux, then install the downloaded JDK in the `~/Padogrid/products` directory as follows.
+
+```bash
+tar -C ~/Padogrid/products -xzf  ~/Downloads/jdk-8u333-linux-x64.tar.gz
+```
+
+If your host OS is NOT Linux, then install the downloaded JDK and Geode/GemFire in the `~/Padogrid/products/linux` directory as follows.
 
 ```bash
 mkdir ~/Padogrid/products/linux
+# JDK
 tar -C ~/Padogrid/products/linux -xzf  ~/Downloads/jdk-8u333-linux-x64.tar.gz
-# Geode
-tar -C ~/Padogrid/products/linux -xzf  ~/Downloads/apache-geode-1.14.4.tgz
+# Geode - 'install_padogrid' previously downloaded the Geode tarball in ~/Padogrid/downloads/
+tar -C ~/Padogrid/products/linux -xzf  ~/Padogrid/downloads/apache-geode-1.14.4.tgz
 # GemFire
 tar -C ~/Padogrid/products/linux -xzf  ~/Downloads/pivotal-gemfire-9.10.16.tgz
 ```
@@ -153,31 +181,18 @@ Inflating the tarballs creates the following directories.
 | Geode            | ~/Padogrid/products/linux/apache-geode-1.14.4     |
 | GemFire          | ~/Padogrid/products/linux/pivotal-gemfire-9.10.16 |
 
-### 2. Install Geode or GemFire on host OS
-
-✏️  *In the previous section, we have installed software for the Vagrant VMs. If your host OS is Linux then you can use the same software by specifying the same directories.*
-
-By default, PadoGrid installs all the products the `~/Padogrid/product` directory. If you have not installed Geode in that directory, then do so now by running the following commands.
-
-```bash
-# Install Geode on Host OS if not already installed
-tar -C ~/Padogrid/products ~/Downloads/apache-geode-1.14.4.tgz
-update_product -product geode
-
-# Install GemFire on Host OS if not alrady installed
-tar -C ~/Padogrid/products ~/Downloads/pivotal-gemfire-9.10.16.tgz
-update_product -product gemfire
-```
-
-The `create_pod` command shown below assumes the following products installed.
-
-| Software for Host OS | Host OS Path                                  |
-| ---------------------| --------------------------------------------- |
-| Geode                | `~/Padogrid/products/apache-geode-1.14.4`     |
-| GemFire              | `~/Padogrid/products/pivotal-gemfire-9.10.16` |
-| PadoGrid             | `~/Padogrid/products/padogrid_0.9.20`         |
 
 ### 3. Create pod
+
+First, set the products directory path required by `create_pod`.
+
+```bash
+# If your host OS is Linux and you have installed JDK in the `~/Padogrid/products`:
+LINUX_PRODUCTS_DIR="$HOME/Padogrid/products"
+
+# If your host OS is NOT Linux and you have installed JDK in the `~/Padogrid/products/linux`:
+LINUX_PRODUCTS_DIR="$HOME/Padogrid/products/linux"
+```
 
 Create a pod named `pod_sb` with seven (7) nodes. The pod name must be `pod_sb` since the included cluster, `sb`, has been paired with that pod name. Each VM should have at least 1024 MiB of memory.
 
@@ -186,12 +201,13 @@ Create a pod named `pod_sb` with seven (7) nodes. The pod name must be `pod_sb` 
 # Configure 1536 MiB for primary and data nodes. Enable Avahi to allow hostname lookup of
 # *.local hostnames via mDNS, i.e., pnode.local, node-01.local, etc.
 create_pod -quiet \
+  -ip 192.168.56.10 \
   -avahi \
   -pod pod_sb \
   -pm 1536 \
   -nm 1536 \
   -count 7 \
-  -dir /Users/dpark/Padogrid/products/linux
+  -dir $LINUX_PRODUCTS_DIR
 ```
 
 ### 4. Build pod
@@ -294,8 +310,7 @@ Enter the following URL in your browser to monitor the cluster from the Geode Pu
 From your host OS, build `perf_test_sb` and run `test_group` as follows:
 
 ```console
-cd_app perf_test_sb; cd bin_sh
-./build_app
+cd_app perf_test_sb/bin_sh
 ./test_group -run
 ```
 
@@ -440,24 +455,24 @@ The `sb/bin_sh` folder contains the following network partitioning scripts. The 
 | merge_cluster | Merge the split clusters by resetting iptables                        |
 | split_cluster | Split the cluster sb into two (2)                                     |
 
-The `sb/bin_sh` folder also contains log scraping scripts as follows. These scripts will help us analyzing the state of the cluster. The `-?` option displays the command usage.
+PadoGrid provides the Geode/GemFire log scraping scripts as follows. These scripts will help us analyzing the state of the cluster. The `-?` option displays the command usage.
 
-| Script                                 | Description                                                                  |
-| -------------------------------------- | ---------------------------------------------------------------------------- |
-| revoke_all_missing_disk_stores         | Iteratively revoke all missing data stores                                   |
-| show_all_suspect_node_pairs            | Find the specified suspect node from all log files                           |
-| show_all_unexpectedly_left_members     | Display unexpectedly left members in chronological order                     |
-| show_all_unexpectedly_shutdown_removal | Find the members that unexpectedly shutdown for removal from the cluster     |
-| show_cluster_views                     | Display cluster views in chronological order                                 |
-| show_member_join_requests              | Display member join requests received by the locators in chronological order |
-| show_membership_service_failure        | Display membership service failure and restarted messages from locators      |
-| show_missing_disk_stores               | Display missing disk stores                                                  |
-| show_offline_members                   | Display offline regions per member                                           |
-| show_quorum_check                      | Display quorum check status if any                                           |
-| show_recovery_steps                    | Display recovery steps for the specfied type                                 |
-| show_stuck_threads                     | Find stuck threads                                                           |
-| show_suspect_node_pair                 | Find the specified suspect node pair from the log files                      |
-| show_type                              | Determine the network partition type                                         |
+| Script                                   | Description                                                                  |
+| ---------------------------------------- | ---------------------------------------------------------------------------- |
+| t_revoke_all_missing_disk_stores         | Iteratively revoke all missing data stores                                   |
+| t_show_all_suspect_node_pairs            | Find the specified suspect node from all log files                           |
+| t_show_all_unexpectedly_left_members     | Display unexpectedly left members in chronological order                     |
+| t_show_all_unexpectedly_shutdown_removal | Find the members that unexpectedly shutdown for removal from the cluster     |
+| t_show_cluster_views                     | Display cluster views in chronological order                                 |
+| t_show_member_join_requests              | Display member join requests received by the locators in chronological order |
+| t_show_membership_service_failure        | Display membership service failure and restarted messages from locators      |
+| t_show_missing_disk_stores               | Display missing disk stores                                                  |
+| t_show_offline_members                   | Display offline regions per member                                           |
+| t_show_quorum_check                      | Display quorum check status if any                                           |
+| t_show_recovery_steps                    | Display recovery steps for the specfied type                                 |
+| t_show_stuck_threads                     | Find stuck threads                                                           |
+| t_show_suspect_node_pair                 | Find the specified suspect node pair from the log files                      |
+| t_show_type                              | Determine the network partition type                                         |
 
 To display the `sb` cluster status, run the `show_cluster` command as follows.
 
@@ -520,7 +535,7 @@ We are now ready to conduct split-brain tests. The subsequent section presents a
 
 In thist section, we carry out six (6) test cases to understand how Geode/GemFire behaves under each network partition type. By observing how the locators and members (cache servers) interact when a network partition occurs, we can deduce a pattern that can be used to identify the network partition type, which would aid us to quickly diagnose a system failure in real-life systems. Once we have determined the network partition type, we can then systematically recover from the failure.
 
-This bundle includes the `show_type` script that can be run at any time to check the cluster status. It scrapes the log files to determine the network partition type and provides the respective system recovery procedure. Our ultimate goal is to have this script to tell us what to do in case of any Geode/GemFire failure.
+This bundle includes the `t_show_type` script that can be run at any time to check the cluster status. It scrapes the log files to determine the network partition type and provides the respective system recovery procedure. Our ultimate goal is to have this script to tell us what to do in case of any Geode/GemFire failure.
 
 ### Type 0
 
@@ -552,7 +567,7 @@ cd_cluster sb/bin_sh
 cd_app perf_test_sb/bin_sh
 ./test_group -run
 
-# Check the entry count in each region we just ingested
+# Check the entry count in each region to we just ingested data
 ./test_group -list
 ```
 
@@ -560,13 +575,14 @@ From `pnode.local`, run `split_cluster` as follows:
 
 ```console
 switch_cluster sb/bin_sh
-./split_cluster -type 0
+# Replace 'enp0s8' with the correct interface. Run './split_cluster -?' to see the usage.
+./split_cluster -type 0 enp0s8
 ```
 
-Running `show_membership_service_failure` shows no failures.
+Running `t_show_membership_service_failure` shows no failures.
 
 ```bash
-./show_membership_service_failure
+t_show_membership_service_failure
 ```
 
 ```console
@@ -575,10 +591,10 @@ Member service failure
 Now: 2022/08/11 16:41:20 UTC
 ```
 
-Running `show_cluster_views` shows **node-01** has crashed.
+Running `t_show_cluster_views` shows **node-01** has crashed.
 
 ```bash
-./show_cluster_views
+t_show_cluster_views
 ```
 
 Ouptput:
@@ -638,10 +654,10 @@ sb-locator-node-07.log: 2022/08/11 16:37:43.924 UTC
 Now: 2022/08/11 16:40:40 UTC
 ```
 
-Running `show_all_suspect_node_pairs` shows **node-07** is a suspect for **node-01**. We know from the previous step, **node-01** has crashed.
+Running `t_show_all_suspect_node_pairs` shows **node-07** is a suspect for **node-01**. We know from the previous step, **node-01** has crashed.
 
 ```bash
-./show_all_suspect_node_pairs
+t_show_all_suspect_node_pairs
 ```
 
 ```console
@@ -711,7 +727,7 @@ Now: 2022/08/11 16:42:09 UTC
 ```
 
 ```bash
-./show_all_unexpectedly_left_members
+t_show_all_unexpectedly_left_members
 ```
 
 Output:
@@ -790,13 +806,14 @@ group: g1
 Let's now merge Split A and Split B by running `merge_cluster`.
 
 ```bash
+cd_cluster sb/bin_sh
 ./merge_cluster
 ```
 
-Running `./show_member_join_requests` does not show a join request from **node-01**.
+Running `t_show_member_join_requests` does not show a join request from **node-01**.
 
 ```bash
-./show_member_join_requests
+t_show_member_join_requests
 ```
 
 Output:
@@ -864,10 +881,10 @@ show_cluster
 start_member -num 1
 ```
 
-Running `./show_member_join_requests` shows **node-01** is now able to rejoin the cluster.
+Running `t_show_member_join_requests` shows **node-01** is now able to rejoin the cluster.
 
 ```bash
-./show_member_join_requests
+t_show_member_join_requests
 ```
 
 Output:
@@ -946,7 +963,7 @@ cd_cluster sb/bin_sh
 cd_app perf_test_sb/bin_sh
 ./test_group -run
 
-# Check the entry count in each region we just ingested
+# Check the entry count in each region to which we just ingested data
 ./test_group -list
 ```
 
@@ -954,7 +971,8 @@ From `pnode.local`, run `split_cluster` as follows:
 
 ```console
 switch_cluster sb/bin_sh
-./split_cluster -type 1
+# Replace 'enp0s8' with the correct interface. Run './split_cluster -?' to see the usage.
+./split_cluster -type 1 enp0s8
 ```
 
 To see the `iptables` rules set by `split_cluster`, run `list_rules` as follows:
@@ -993,10 +1011,10 @@ DROP       all  --  192.168.56.17        anywhere
 ...
 ```
 
-From `pnode.local`, monitor the log files to see the cluster being split into two (2). The `show_cluster_views` scrapes the log files to build a complete timeline of the cluster views.
+From `pnode.local`, monitor the log files to see the cluster being split into two (2). The `t_show_cluster_views` scrapes the log files to build a complete timeline of the cluster views.
 
 ```bash
-./show_cluster_views -long
+t_show_cluster_views -long
 ```
 
 Output:
@@ -1014,10 +1032,10 @@ sb-locator-node-07-01.log:[info 2022/07/18 23:25:54.892 UTC sb-locator-node-07-0
     └── 192.168.56.11(sb-node-01:21411)<v2>:41000
 ```
 
-To see the suspect nodes that are not responding, we can run `show_all_suspect_node_pairs`, which displays the last log messages of the suspects.
+To see the suspect nodes that are not responding, we can run `t_show_all_suspect_node_pairs`, which displays the last log messages of the suspects.
 
 ```bash
-./show_all_suspect_node_pairs
+t_show_all_suspect_node_pairs
 ```
 
 Output:
@@ -1075,12 +1093,12 @@ You can seee from the above output that **node-01** and **node-02** are suspects
 
 ![Pulse Schreenshot](images/pulse-1.1.png)
 
-After a few minutes, the locators log "Membership service failure" and proceed to restart themselves. You can monitor these messages by running `show_membership_service_failure`.
+After a few minutes, the locators log "Membership service failure" and proceed to restart themselves. You can monitor these messages by running `t_show_membership_service_failure`.
 
 The output below shows that the locator on **node-06** detects the network partition in 26 seconds. It logged the network partition message at `17:53:16.569` and the first suspect message was logged at `17:52:50.288` as shown in the previous ouput.
 
 ```bash
-./show_membership_service_failure
+t_show_membership_service_failure
 ```
 
 Output:
@@ -1104,12 +1122,12 @@ sb-locator-node-07-01.log
 │   └── system restarted
 ```
 
-When the locators restart, the locators publish the new cluster view. We can see a complete timeline of cluster views by running `show_cluster_views` as shown below. The output indicates that the cluster view has changed from five (5) data nodes at `2022/07/23 17:50:45.721 UTC` to three (3) at `2022/07/23 17:55:34.231 UTC`. It took 4:49 minutes to resolve the network partition.
+When the locators restart, the locators publish the new cluster view. We can see a complete timeline of cluster views by running `t_show_cluster_views` as shown below. The output indicates that the cluster view has changed from five (5) data nodes at `2022/07/23 17:50:45.721 UTC` to three (3) at `2022/07/23 17:55:34.231 UTC`. It took 4:49 minutes to resolve the network partition.
 
 We can also see from the above output, that most of the time is spent restarting the system. The locator on **node-01** detects a network partition at `17:53:16.569` and logs "system restarted" at `17:55:49.779`. It took 2:33 minutes to restart the entire system (or cluster).
 
 ```bash
-./show_cluster_views -long
+t_show_cluster_views -long
 ```
 
 Output:
@@ -1221,7 +1239,7 @@ Caused by: java.net.UnknownHostException: node-07.local
 
 Running `gfsh` shows the members in Split B are inact but we are unable to check the persistent status.
 
-✏️  *You won't be able to connect to the cluster (Split B) via `gfsh` until a quorum (Split B) is established. This will take a few minutes. You can run `show_cluster_views` or `show_membership_service_failure` to check the cluster status in the meantime.*
+✏️  *You won't be able to connect to the cluster (Split B) via `gfsh` until a quorum (Split B) is established. This will take a few minutes. You can run `t_show_cluster_views` or `t_show_membership_service_failure` to check the cluster status in the meantime.*
 
 ```bash
 gfsh
@@ -1273,9 +1291,9 @@ Eviction | eviction-action    | overflow-to-disk
 gfsh>describe region --name=/partition_persistent
 ```
 
-The last line above hangs indefinitely. Non-persistent regions are empty. We lost their data. Persistent regions are not empty, however,  which can be verified from Pulse, but they are not accessible.
+The last line above hangs indefinitely. Gfsh is unable to access the persistent regions. Note that unlike the non-persistent regions, the persistent regions are not empty, which can be verified from Pulse. 
 
-Running `test_group -list` shows that it is unable to connect to the cluster. Split B is inaccessible.
+Running `test_group -list` shows that it is also unable to connect to the cluster. Split B is inaccessible.
 
 ```bash
 cd_app perf_test_sb/bin_sh
@@ -1297,15 +1315,16 @@ We now need to decide whether to recover the cluster with only Split B and aband
 Let's now merge Split A and Split B by running `merge_cluster`.
 
 ```bash
+cd_cluster sb/bin_sh
 ./merge_cluster
 ```
 
 If you have `gfsh` still running in the previous step, then it finally returns with the correct entry count in the persistent region.
 
-We still have **node-01** and **node-02** (in Split A) running. Now that the network has merged, these nodes are able to reach the locators. They immediately send "join requests" to one of the locators, which can be seen in the locator log file. Run `show_member_join_requests` to see the messages.
+We still have **node-01** and **node-02** (in Split A) running. Now that the network has merged, these nodes are able to reach the locators. They immediately send "join requests" to one of the locators, which can be seen in the locator log file. Run `t_show_member_join_requests` to see the messages.
 
 ```bash
-./show_member_join_requests
+t_show_member_join_requests
 ```
 
 Output:
@@ -1340,10 +1359,10 @@ sb-locator-node-06-01.log
 │   └── 192.168.56.11(sb-node-01:12242):41000
 ```
 
-If you run `show_cluster_views`, it should display the latest cluster view with **node-01** and **node-02** now belonging to the cluster.
+If you run `t_show_cluster_views`, it should display the latest cluster view with **node-01** and **node-02** now belonging to the cluster.
 
 ```bash
-./show_cluster_views -long
+t_show_cluster_views -long
 ```
 
 Output:
@@ -1363,7 +1382,7 @@ sb-locator-node-07-01.log:[info 2022/07/23 18:27:03.580 UTC sb-locator-node-07-0
 
 ![Pulse Schreenshot](images/pulse-1.3.png)
 
-Running `test_group -list` shows that we lost data in non-persistent regions.
+Running `test_group -list` shows that we lost data in the non-persistent regions.
 
 ```bash
 ./test_group -list
@@ -1416,7 +1435,7 @@ group: g1
 
 If we choose not to merge the splits, then you can revoke missing disk stores so that the members in Split B can join the cluster. We would lose data held by the members in Split A, however. The following `gfsh` output shows the outcome of revoking disk stores.
 
-✏️  *You may not be able to connect via `gfsh` until the cluster has been auto-restarted, which may take a few minutes. You can run `./show_membership_service_failure` to check the restart status.*
+✏️  *You may not be able to connect via `gfsh` until the cluster has been auto-restarted, which may take a few minutes. You can run `t_show_membership_service_failure` to check the restart status.*
 
 ```bash
 gfsh
@@ -1493,6 +1512,7 @@ Eviction | eviction-action    | overflow-to-disk
 Let's try merging the splits with the Split A members still running.
 
 ```bash
+cd_cluster sb/bin_sh
 ./merge_cluster
 ```
 
@@ -1551,7 +1571,7 @@ cd_cluster sb/bin_sh
 cd_app perf_test_sb/bin_sh
 ./test_group -run
 
-# Check the entry count in each region we just ingested
+# Check the entry count in each region to which we just ingested data
 ./test_group -list
 ```
 
@@ -1559,17 +1579,18 @@ From `pnode.local`, run `split_cluster` as follows:
 
 ```console
 switch_cluster sb/bin_sh
-./split_cluster -type 2
+# Replace 'enp0s8' with the correct interface. Run './split_cluster -?' to see the usage.
+./split_cluster -type 2 enp0s8
 ```
 
 Pulse immediately reports suspects and freezes. It is no longer usable.
 
 ![Pulse Schreenshot](images/pulse-2.1.png)
 
-Running `./show_all_suspect_node_pairs` shows that the **node-06** locator is a suspect *for* **node-03**, **node-04**, **node-05**, and **node-07**. We can derive from this log information that the **node-07** locator has a quorum to become the new coordinator.
+Running `t_show_all_suspect_node_pairs` shows that the **node-06** locator is a suspect *for* **node-03**, **node-04**, **node-05**, and **node-07**. We can derive from this log information that the **node-07** locator has a quorum to become the new coordinator.
 
 ```bash
-./show_all_suspect_node_pairs
+t_show_all_suspect_node_pairs
 ```
 
 Output:
@@ -1661,10 +1682,10 @@ Suspect: node-07
 Not found.
 ```
 
-After a few minutes, running `show_cluster_views` shows that the **node-07** locator became the new coordinator as predicted in the previous step.
+After a few minutes, running `t_show_cluster_views` shows that the **node-07** locator became the new coordinator as predicted in the previous step.
 
 ```bash
-./show_cluster_views -long
+t_show_cluster_views -long
 ```
 
 Output:
@@ -1691,10 +1712,10 @@ sb-locator-node-07-01.log:[info 2022/07/24 15:26:55.465 UTC sb-locator-node-07-0
     └── 192.168.56.14(sb-node-04:1152)<v1>:41000
 ```
 
-Running `show_membership_service_failure` after a few minutes shows the fatal membership service failure error and the system has restarted. As in Type 1, once again, the cluster restarted and we lost the non-persistent data.
+Running `t_show_membership_service_failure` after a few minutes shows the fatal membership service failure error and the system has restarted. As in Type 1, once again, the cluster restarted and we lost the non-persistent data.
 
 ```bash
-./show_membership_service_failure
+t_show_membership_service_failure
 ```
 
 Output:
@@ -1784,10 +1805,11 @@ Use the gfsh show missing-disk-stores command to see all disk stores that are be
 We now attempt to merge the splits.
 
 ```bash
+cd_cluster sb/bin_sh
 ./merge_cluster
 ```
 
-Running `./show_member_join_requests` shows that the **node-07** locator received join requests from all the nodes from Split A.
+Running `t_show_member_join_requests` shows that the **node-07** locator received join requests from all the nodes from Split A.
 
 ```console
 Member join requests:
@@ -1818,10 +1840,10 @@ sb-locator-node-07-01.log
 │   └── 192.168.56.12(sb-node-02:8275):41000
 ```
 
-Running `show_cluster_views` shows that the **node-07** locator published a new cluster view with all the nodes intact.
+Running `t_show_cluster_views` shows that the **node-07** locator published a new cluster view with all the nodes intact.
 
 ```bash
-./show_cluster_views -long
+t_show_cluster_views -long
 ```
 
 Output:
@@ -1843,7 +1865,7 @@ Pulse also shows that all the members are back in the cluster but with only pers
 
 ![Pulse Schreenshot](images/pulse-2.2.png)
 
-Running `test_group` shows persistent regions with data and non-persistent regions without data.
+Running `test_group` shows the persistent regions with data and the non-persistent regions without data.
 
 ```bash
 ./test_group -list
@@ -1931,7 +1953,7 @@ cd_cluster sb/bin_sh
 cd_app perf_test_sb/bin_sh
 ./test_group -run
 
-# Check the entry count in each region we just ingested
+# Check the entry count in each region to which we just ingested data
 ./test_group -list
 ```
 
@@ -1939,17 +1961,18 @@ From `pnode.local`, run `split_cluster` as follows:
 
 ```console
 switch_cluster sb/bin_sh
-./split_cluster -type 3
+# Replace 'enp0s8' with the correct interface. Run './split_cluster -?' to see the usage.
+./split_cluster -type 3 enp0s8
 ```
 
 Pulse immediately reports suspects and freezes. It is no longer usable.
 
 ![Pulse Schreenshot](images/pulse-3.1.png)
 
-Running `show_cluster_views` shows that **node-07** is the coordinator.
+Running `t_show_cluster_views` shows that **node-07** is the coordinator.
 
 ```bash
-./show_cluster_views
+t_show_cluster_views
 ```
 
 Output:
@@ -2002,10 +2025,10 @@ sb-locator-node-07.log: 2022/08/10 17:54:16.111 UTC
 Now: 2022/08/10 18:01:30 UTC
 ```
 
-Running `./show_all_suspect_node_pairs` shows that **node-02**, **node-03**, and **node-07** are suspects. These members do not represent neither Split A nor Split B. We cannot rely on this information to determine the network partition state.
+Running `t_show_all_suspect_node_pairs` shows that **node-02**, **node-03**, and **node-07** are suspects. These members do not represent neither Split A nor Split B. We cannot rely on this information to determine the network partition state.
 
 ```bash
-./show_all_suspect_node_pairs
+t_show_all_suspect_node_pairs
 ```
 
 Output:
@@ -2062,10 +2085,10 @@ Last logged:
 Now: 2022/08/10 18:04:53 UTC
 ```
 
-Running `show_membership_service_failure` clearly shows the state of the cluster. The **node-06** locator coordinator has declared a network partition with the Split B members listed. Unlike `show_all_suspect_node_pairs`, it accurately determined all the unreachable members. The `show_all_suspect_node_pairs` discrepency is due to the incomplete log messages being recorded in the log files while the cluster is experiencing the network failure. It is important to note that we must use all the available diagnostic tools before arriving to a conclusion.
+Running `t_show_membership_service_failure` clearly shows the state of the cluster. The **node-06** locator coordinator has declared a network partition with the Split B members listed. Unlike `t_show_all_suspect_node_pairs`, it accurately determined all the unreachable members. The `t_show_all_suspect_node_pairs` discrepency is due to the incomplete log messages being recorded in the log files while the cluster is experiencing the network failure. It is important to note that we must use all the available diagnostic tools before arriving to a conclusion.
 
 ```bash
-./show_membership_service_failure
+t_show_membership_service_failure
 ```
 
 Output:
@@ -2134,12 +2157,13 @@ Locators Running: 2/2
 We now attempt to merge the splits.
 
 ```bash
+cd_cluster sb/bin_sh
 ./merge_cluster
 ```
 
-After a few minutes, running `show_membership_service_failure` shows the locators are not able to recover the cluster.
+After a few minutes, running `t_show_membership_service_failure` shows the locators are not able to recover the cluster.
 
-Looking at the **node-07** locator log, it is trying to establish a quorum but fails because the sum of the four (4) responding members is only 26 which is less than the quorum threadhold of 31. Unfortunately, the log does not reveal the reponding member names. We can guest they are 2 members and 2 locators (2\*10+2\*3=26). They should be the members in Split A which includes **node-01** as the lead having the weight of 15. However, the `show_cluster_views` ouput above shows that the lead has been changed to **node-03**. This seems to explain why the quorum is less than 26.
+Looking at the **node-07** locator log, it is trying to establish a quorum but fails because the sum of the four (4) responding members is only 26 which is less than the quorum threadhold of 31. Unfortunately, the log does not reveal the reponding member names. We can guest they are 2 members and 2 locators (2\*10+2\*3=26). They should be the members in Split A which includes **node-01** as the lead having the weight of 15. However, the `t_show_cluster_views` ouput above shows that the lead has been changed to **node-03**. This seems to explain why the quorum is less than 26.
 
 ```bash
 # View node-07 locator log
@@ -2199,7 +2223,7 @@ cd_cluster sb/bin_sh
 cd_app perf_test_sb/bin_sh
 ./test_group -run
 
-# Check the entry count in each region we just ingested
+# Check the entry count in each region to which we just ingested data
 ./test_group -list
 ```
 
@@ -2207,17 +2231,18 @@ From `pnode.local`, run `split_cluster` as follows:
 
 ```console
 switch_cluster sb/bin_sh
-./split_cluster -type 4
+# Replace 'enp0s8' with the correct interface. Run './split_cluster -?' to see the usage.
+./split_cluster -type 4 enp0s8
 ```
 
 Pulse immediately reports suspects and freezes. It is no longer usable.
 
 ![Pulse Schreenshot](images/pulse-3.1.png)
 
-Running `show_all_suspect_node_pairs` shows that **node-06** and **node-07** are suspects for all the data nodes. This is expected since both locators are not reachable by the data nodes.
+Running `t_show_all_suspect_node_pairs` shows that **node-06** and **node-07** are suspects for all the data nodes. This is expected since both locators are not reachable by the data nodes.
 
 ```bash
-./show_all_suspect_node_pairs
+t_show_all_suspect_node_pairs
 ```
 
 Output:
@@ -2295,10 +2320,10 @@ Last logged:
 Now: 2022/08/10 18:35:10 UTC
 ```
 
-Running `show_cluster_views` shows that initially, both locators (**node-06** and **node-07**) can only see themselves but at `18:31:25`, both recorded a complete view of all the data nodes. We also see after 5:31 minutes, at `18:33:45.230`, there are four (4) data nodes failed to respond to the view change. We are expecting all five (5) data nodes to fail to repond, however. The cluster views do not represent the current state of the cluster. We need to investigate the log files further.
+Running `t_show_cluster_views` shows that initially, both locators (**node-06** and **node-07**) can only see themselves but at `18:31:25`, both recorded a complete view of all the data nodes. We also see after 5:31 minutes, at `18:33:45.230`, there are four (4) data nodes failed to respond to the view change. We are expecting all five (5) data nodes to fail to repond, however. The cluster views do not represent the current state of the cluster. We need to investigate the log files further.
 
 ```bash
-./show_cluster_views -long
+t_show_cluster_views -long
 ```
 
 Output:
@@ -2344,10 +2369,10 @@ sb-locator-node-07.log:[info 2022/08/10 18:31:25.444 UTC sb-locator-node-07 <uni
 Now: 2022/08/10 18:35:38 UTC
 ```
 
-Since the cluster views do not reflect the current state of the cluster, we turn to `show_membership_service_failure`, which shows what we are expecting. We can see from the output below that a network partition has occurred and all five (5) data nodes are unreachable by the **node-06** locator.
+Since the cluster views do not reflect the current state of the cluster, we turn to `t_show_membership_service_failure`, which shows what we are expecting. We can see from the output below that a network partition has occurred and all five (5) data nodes are unreachable by the **node-06** locator.
 
 ```bash
-./show_membership_service_failure
+t_show_membership_service_failure
 ```
 
 Output:
@@ -2381,6 +2406,7 @@ I/O error on GET request for "http://node-06.local:7070/geode-mgmt/v1/ping": Con
 We now attempt to merge the splits.
 
 ```bash
+cd_cluster sb/bin_sh
 ./merge_cluster
 ```
 
@@ -2564,7 +2590,7 @@ cd_cluster sb/bin_sh
 cd_app perf_test_sb/bin_sh
 ./test_group -run
 
-# Check the entry count in each region we just ingested
+# Check the entry count in each region to which we just ingested data
 ./test_group -list
 ```
 
@@ -2572,17 +2598,18 @@ From `pnode.local`, run `split_cluster` as follows:
 
 ```console
 switch_cluster sb/bin_sh
-./split_cluster -type 5
+# Replace 'enp0s8' with the correct interface. Run './split_cluster -?' to see the usage.
+./split_cluster -type 5 enp0s8
 ```
 
 Pulse continues to run showing all members inact.
 
 ![Pulse Schreenshot](images/pulse-5.1.png)
 
-Running `show_cluster_views` shows that all members are running.
+Running `t_show_cluster_views` shows that all members are running.
 
 ```bash
-./show_cluster_views
+t_show_cluster_views
 ```
 
 Output:
@@ -2620,10 +2647,10 @@ sb-locator-node-07.log: 2022/08/10 22:21:14.008 UTC
 Now: 2022/08/10 22:23:21 UTC
 ```
 
-Running `./show_all_suspect_node_pairs` shows **node-02** is a suspect for **node-03**, **node-04**, and **node-05**. The "First Logged" and "Last Logged" messages consistently show that **node-02** is a suspect (from) for **node-03**, **node-04**, and **node-05**.
+Running `t_show_all_suspect_node_pairs` shows **node-02** is a suspect for **node-03**, **node-04**, and **node-05**. The "First Logged" and "Last Logged" messages consistently show that **node-02** is a suspect (from) for **node-03**, **node-04**, and **node-05**.
 
 ```bash
-./show_all_suspect_node_pairs
+t_show_all_suspect_node_pairs
 ```
 
 Output:
@@ -2791,10 +2818,10 @@ Running a region command from `gfsh` hangs indefinitely, however.
 gfsh>describe region --name=/partition_persistent
 ```
 
-Running `show_stuck_threads` shows there are stuck threads.
+Running `t_show_stuck_threads` shows there are stuck threads.
 
 ```bash
-./show_stuck_threads
+.t_show_stuck_threads
 ```
 
 Output:
@@ -2858,6 +2885,7 @@ org.apache.geode.distributed.internal.ReplyProcessor21.waitForRepliesUninterrupt
 We now attempt to merge the splits.
 
 ```bash
+cd_cluster sb/bin_sh
 ./merge_cluster
 ```
 
@@ -2977,10 +3005,10 @@ Output:
 ...
 ```
 
-Running `show_stuck_threads` shows that the stuck thread replies are completed.
+Running `t_show_stuck_threads` shows that the stuck thread replies are completed.
 
 ```bash
-./show_stuck_threads
+t_show_stuck_threads
 ```
 
 Output:
