@@ -28,6 +28,7 @@ This bundle provides scripts, configuration files, and apps for creating a Geode
   - [5. Ingest data - `perf_test_sb`](#5-ingest-data---perf_test_sb)
 - [Network Partition](#network-partition)
   - [GemFire Documentation](#gemfire-documentation)
+  - [GemFire Member Weights](#gemfire-member-weights)
   - [GemFire Network Partition Types](#gemfire-network-partition-types)
   - [Scripts](#scripts)
 - [Test Cases](#test-cases)
@@ -370,6 +371,16 @@ We closely follow the guidelines in the GemFire documentation on Network Partiti
 - [Failure Detection and Membership Views](https://docs.vmware.com/en/VMware-Tanzu-GemFire/9.15/tgf/GUID-managing-network_partitioning-failure_detection.html)
 - [Membership Coordinators, Lead Members and Member Weighting](https://docs.vmware.com/en/VMware-Tanzu-GemFire/9.15/tgf/GUID-managing-network_partitioning-membership_coordinators_lead_members_and_weighting.html)
 - [Log Messages and Solutions](https://docs.vmware.com/en/VMware-Tanzu-GemFire/9.15/tgf/GUID-managing-troubleshooting-log_messages_and_solutions.html?hWord=N4IghgNiBcIM4BcCuBjA1gAgQCwE4FMwATEAXyA)
+
+### GemFire Member Weights
+
+By default, individual members are assigned weights as shown below. The membership coordinator determines quorum by summing up the weights. Please see [Membership Coordinators, Lead Members and Member Weighting](https://docs.vmware.com/en/VMware-Tanzu-GemFire/9.15/tgf/GUID-managing-network_partitioning-membership_coordinators_lead_members_and_weighting.html) for details.
+
+| Member Role | Weight |
+| ----------- | ------ |
+| lead        | 15     |
+| member      | 10     |
+| locator     | 3      |
 
 ### GemFire Network Partition Types
 
